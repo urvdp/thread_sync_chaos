@@ -18,6 +18,8 @@
 
 #define NUM_VEHICULOS 100
 
+bool debug = false;
+
 sem_t sem;
 pthread_t hilos[NUM_VEHICULOS];
 bool turno_este_oeste = true; // flag para que las posibilidades en ambas colas de espera sean iguales
@@ -65,12 +67,12 @@ bool is_valid_integer(const char *str) {
 }
 
 void *mostrar_en_pantalla(void *arg) {
+    int *status = (int *)arg;
     struct timespec ts;
     ts.tv_sec = 0;
-    //ts.tv_nsec = 500000000;
-    ts.tv_nsec = 600000000;
+    ts.tv_nsec = 500000000;
 
-    while (1) {
+    while (*status == 1) {
         pthread_mutex_lock(&display_state.display_mutex);
 
         // Clear and redraw the layout
@@ -92,7 +94,8 @@ void *mostrar_en_pantalla(void *arg) {
         // Refresh the display every 500ms
         nanosleep(&ts, NULL);;
     }
-    return NULL;
+    // exiting gracefully
+    pthread_exit(0);
 }
 
 char *time_now_ns() {
@@ -131,7 +134,9 @@ void *vehiculo_en_marcha(void *arg) {
         agregar(&espera_este_oeste, coche_para_cola);
         pthread_mutex_lock(&mutex_este_oeste);
         n_este_oeste++;
-        printf("cola este-oeste: %d\n", n_este_oeste);
+        if (debug) {
+            printf("cola este-oeste: %d\n", n_este_oeste);
+        }
 
 
         pthread_mutex_lock(&display_state.display_mutex);
@@ -144,7 +149,9 @@ void *vehiculo_en_marcha(void *arg) {
         n_norte_sur++;
 
         pthread_mutex_lock(&display_state.display_mutex);
-        printf("cola norte-sur: %d\n", n_norte_sur);
+        if (debug) {
+            printf("cola norte-sur: %d\n", n_norte_sur);
+        }
 
         display_state.espera_norte_sur = n_norte_sur;
         pthread_mutex_unlock(&mutex_norte_sur);
@@ -166,7 +173,9 @@ void *vehiculo_en_marcha(void *arg) {
 
         coche = sacar(&espera_este_oeste);
         n_este_oeste--;
-        printf("cola este-oeste: %d\n", n_este_oeste);
+        if (debug) {
+            printf("cola este-oeste: %d\n", n_este_oeste);
+        }
 
         pthread_mutex_lock(&display_state.display_mutex);
         display_state.espera_este_oeste = n_este_oeste;
@@ -186,7 +195,9 @@ void *vehiculo_en_marcha(void *arg) {
         coche = sacar(&espera_norte_sur);
         n_norte_sur--;
 
-        printf("cola norte-sur: %d\n", n_norte_sur);
+        if (debug) {
+            printf("cola norte-sur: %d\n", n_norte_sur);
+        }
 
         pthread_mutex_lock(&display_state.display_mutex);
         display_state.espera_norte_sur = espera_norte_sur.tamano;
@@ -208,7 +219,9 @@ void *vehiculo_en_marcha(void *arg) {
 
         coche = sacar(&espera_este_oeste);
         n_este_oeste--;
-        printf("cola este-oeste: %d\n", n_este_oeste);
+        if (debug) {
+            printf("cola este-oeste: %d\n", n_este_oeste);
+        }
 
         pthread_mutex_lock(&display_state.display_mutex);
         display_state.espera_este_oeste = espera_este_oeste.tamano;
@@ -236,8 +249,11 @@ void *vehiculo_en_marcha(void *arg) {
 
     if (coche != NULL) {
         if (coche->via == este_oeste && coche->derecha) {
-            sleep(1); // tiempo para cruzar
-            printf("girando a derecha -> id %d\n", coche->id);
+            // en case de la via este-oeste que el vehicula gira a la derecha, no tiene que esperar al paso a la interseccion
+            sleep(1); // tiempo para girar a derecha
+            if (debug) {
+                printf("girando a derecha -> id %d\n", coche->id);
+            }
             pthread_mutex_lock(&display_state.display_mutex);
             display_state.crossing_vehicle_id = coche->id;
             strcpy(display_state.crossing_dir, "girando a la derecha hacia norte");
@@ -270,11 +286,13 @@ void *vehiculo_en_marcha(void *arg) {
     fprintf(log_file, "[%s] no se saco cocha en hilo de coche %d - %s\n", timestamp, coche_para_cola->id,
             coche_para_cola->via == este_oeste ? "este-oeste" : "norte-sur");
     free(timestamp);
-    printf("-------- coche es nulo ----- se agrego: id %d via %s\n", coche_para_cola->id,
-            coche_para_cola->via == este_oeste ? "este-oeste" : "norte-sur");
+    if (debug) {
+        printf("-------- coche es nulo ----- se agrego: id %d via %s\n", coche_para_cola->id,
+               coche_para_cola->via == este_oeste ? "este-oeste" : "norte-sur");
+    }
     int *int_ptr = malloc(sizeof(int));
     *int_ptr = 1;
-    pthread_exit((void *)int_ptr);
+    pthread_exit((void *) int_ptr);
 }
 
 int main(int argc, char **argv) {
@@ -282,7 +300,10 @@ int main(int argc, char **argv) {
     req.tv_sec = 0;
     req.tv_nsec = 100000000;
     // comprobar si cadena es entero: https://www.geeksforgeeks.org/check-given-string-valid-number-integer-floating-point/
-    if (argc != 2 || !is_valid_integer(argv[1])) {
+    if (argc == 3 && !(!is_valid_integer(argv[1]) || argv[2] == "-v")) {
+        printf("se usa output verbose para debugging\n");
+        debug = true;
+    } else if (argc != 2 || !is_valid_integer(argv[1])) {
         fprintf(stderr, "usage: ./semaforo <positive integer>, for example: './semaforo 123'\n");
         return -1;
     }
@@ -294,14 +315,16 @@ int main(int argc, char **argv) {
     const int MODULO_VIA_ESTE_OESTE = 4;
     const int MODULO_VIA_ESTE_NORTE = 9;
 
-    log_file = fopen("debug.log", "w");
-    rand_file = fopen("rand.log", "w");
+    log_file = fopen("logs/debug.log", "w");
+    rand_file = fopen("logs/rand.log", "w");
 
-    // Initialize ncurses
-    /**initscr();
-    cbreak();
-    noecho();
-    curs_set(0);**/
+    // Inicializar ncurses
+    if (!debug) {
+        initscr();
+        cbreak();
+        noecho();
+        curs_set(0);
+    }
 
     // inicializar semaforo para cruzar
     sem_init(&sem, 0, 1);
@@ -309,10 +332,13 @@ int main(int argc, char **argv) {
     // se usa atoi() aqui aunque no reporta errores de conversion, pero se sabe que el string es convertible porque eso
     // se controla antes con la funcion is_valid_integer()
     unsigned int seed = (unsigned int) atoi(argv[1]);
-    printf("#### Inicializando Semaforo con seed=%u ####\n", seed);
+    if (debug) {
+        printf("#### Inicializando Semaforo con seed=%u ####\n", seed);
+    }
 
+    int display_status = 1; // mientras que no este 0 el programa sigue ejecutandose
     pthread_t display_thread;
-    pthread_create(&display_thread, NULL, mostrar_en_pantalla, NULL);
+    pthread_create(&display_thread, NULL, mostrar_en_pantalla, &display_status);
 
     // 1) crear numero aleatorio
     int status = 1;
@@ -344,17 +370,17 @@ int main(int argc, char **argv) {
             contador_este_norte++;
         }
 
-        if (coche != NULL) {
+        if (debug && coche != NULL) {
             // crear hilo pasando el coche correspondiente
             pthread_create(&hilos[next_id - 1], NULL, vehiculo_en_marcha, coche);
             vias type = coche->via;
             if (type == 0) {
-                //printf("    vehiculo en via norte-sur creado\n");
+                printf("    vehiculo en via norte-sur creado\n");
             } else if (type == 1) {
                 if (!coche->derecha) {
-                    //printf("    vehiculo en via este-oeste creado (siuge derecho)\n");
+                    printf("    vehiculo en via este-oeste creado (siuge derecho)\n");
                 } else {
-                    //printf("    vehiculo en via este-oeste creado (gira a la derecha)\n");
+                    printf("    vehiculo en via este-oeste creado (gira a la derecha)\n");
                 }
             }
         }
@@ -365,7 +391,7 @@ int main(int argc, char **argv) {
         }
         nanosleep(&req, &rem);
         if (coche != NULL) {
-            char* timestamp = time_now_ns();
+            char *timestamp = time_now_ns();
             fprintf(rand_file, "[%s] id: %d | via: %s | dir: %s\n", timestamp, coche->id,
                     coche->via == este_oeste ? "este-oeste" : "norte-sur",
                     coche->derecha == 1 ? "derecha" : "recto");
@@ -380,20 +406,20 @@ int main(int argc, char **argv) {
     fprintf(rand_file, "num vehiculos total: %d", next_id);
     fclose(rand_file);
 
-    log_exit = fopen("thread_exit.log", "w");
+    log_exit = fopen("logs/thread_exit.log", "w");
     fprintf(log_exit, "Thread Exit Log\n");
     fclose(log_exit);
 
     // esperar la terminacion de todos los hilos creados
 
-    char* timestamp = "";
+    char *timestamp = "";
     for (int i = 0; i < next_id; i++) {
         void *exit_status;
         // agregar a archivo log exisitendo, asi se guarda informacion de los demas hilos en
         // caso de que uno no termina
-        log_exit = fopen("thread_exit.log", "a");
+        log_exit = fopen("logs/thread_exit.log", "a");
         pthread_join(hilos[i], &exit_status);
-        int st = exit_status ? *(int *)exit_status : -1;
+        int st = exit_status ? *(int *) exit_status : -1;
         timestamp = time_now_ns();
         if (st == -1) {
             fprintf(log_exit, "[%s] Thread %d terminated with no status\n", timestamp, i);
@@ -416,7 +442,18 @@ int main(int argc, char **argv) {
     sem_destroy(&sem);
 
     // esperar a hilo de pantalla para terminar
+
+    log_exit = fopen("logs/thread_exit.log", "a");
+    display_status = 0;
     pthread_join(display_thread, NULL);
+    char* exit_time = time_now_ns();
+    fprintf(log_exit, "[%s] Display thread terminated\n", exit_time);
+    fclose(log_exit);
+    free(exit_time);
+
+    if (!debug) {
+        endwin();
+    }
 
     return 0;
 }

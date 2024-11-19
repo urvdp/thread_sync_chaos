@@ -26,10 +26,10 @@ void agregar(cola *ref_cola, vehiculo *coche) {
 
     ref_cola->tamano++;
 
-    printf("Queued vehiculo: %p, ID: %d VIA: %s\n", (void *) coche, coche->id,
-           coche->via == este_oeste ? "este-oeste" : "norte-sur");
+    //printf("Queued vehiculo: %p, ID: %d VIA: %s\n", (void *) coche, coche->id,
+    //       coche->via == este_oeste ? "este-oeste" : "norte-sur");
 
-    // signalizar que hay un nuevo vehiculo, no se usa porque acceso esta manejado por contadores en main
+    // signalizar que hay un nuevo vehiculo, no se usa porque acceso se maneja por contadores en main
     //pthread_cond_signal(&ref_cola->condicion);
 
     // soltar candado
@@ -43,6 +43,7 @@ vehiculo *sacar(cola *ref_cola) {
     // si la cola esta vacia, se espera a un vehiculo -> en caso de sincronizacion de procesos real
     // creo que seria una muy buena implementacion, pero eso lo hace dificil desplegar lo que pasa
     // por eso trabajo mas con el tamano de las listas de espera para poder mostrarlo en pantalla
+    // Como lo gestiono de esta manera, la implementación con condiciones queda obsoleta
     //while (ref_cola->frente == NULL) {
     //    // mientras que se espera se suelta el candado para que se puedan agregar elementos
     //    pthread_cond_wait(&ref_cola->condicion, &ref_cola->candado);
@@ -59,8 +60,9 @@ vehiculo *sacar(cola *ref_cola) {
     free(temp);
     ref_cola->tamano--;
 
-    printf("Dequeued vehiculo: %p, ID: %d VIA: %s\n", (void *) coche, coche->id,
-           coche->via == este_oeste ? "este-oeste" : "norte-sur");
+    // todo: include debug flag to give debug output
+    //printf("Dequeued vehiculo: %p, ID: %d VIA: %s\n", (void *) coche, coche->id,
+    //       coche->via == este_oeste ? "este-oeste" : "norte-sur");
 
     pthread_mutex_unlock(&ref_cola->candado);
     return coche;
