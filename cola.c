@@ -30,7 +30,7 @@ void agregar(cola *ref_cola, vehiculo *coche) {
            coche->via == este_oeste ? "este-oeste" : "norte-sur");
 
     // signalizar que hay un nuevo vehiculo, no se usa porque acceso esta manejado por contadores en main
-    pthread_cond_signal(&ref_cola->condicion);
+    //pthread_cond_signal(&ref_cola->condicion);
 
     // soltar candado
     pthread_mutex_unlock(&ref_cola->candado);
@@ -43,10 +43,10 @@ vehiculo *sacar(cola *ref_cola) {
     // si la cola esta vacia, se espera a un vehiculo -> en caso de sincronizacion de procesos real
     // creo que seria una muy buena implementacion, pero eso lo hace dificil desplegar lo que pasa
     // por eso trabajo mas con el tamano de las listas de espera para poder mostrarlo en pantalla
-    while (ref_cola->frente == NULL) {
-        // mientras que se espera se suelta el candado para que se puedan agregar elementos
-        pthread_cond_wait(&ref_cola->condicion, &ref_cola->candado);
-    }
+    //while (ref_cola->frente == NULL) {
+    //    // mientras que se espera se suelta el candado para que se puedan agregar elementos
+    //    pthread_cond_wait(&ref_cola->condicion, &ref_cola->candado);
+    //}
 
     nodo *temp = ref_cola->frente;
     vehiculo *coche = temp->coche;

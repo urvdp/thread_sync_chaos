@@ -20,7 +20,6 @@
 
 sem_t sem;
 pthread_t hilos[NUM_VEHICULOS];
-vehiculo vehiculos[NUM_VEHICULOS];
 bool turno_este_oeste = true; // flag para que las posibilidades en ambas colas de espera sean iguales
 pthread_mutex_t mutex_turno = PTHREAD_MUTEX_INITIALIZER;
 cola espera_este_oeste = {NULL, NULL, 0, PTHREAD_MUTEX_INITIALIZER, PTHREAD_COND_INITIALIZER};
@@ -120,9 +119,11 @@ char *time_now_ns() {
 
 void *vehiculo_en_marcha(void *arg) {
     // usando la estructura vehiculo, se pasan los parametros para saber en que via y a cual direccion va
-    int id = *((int *) arg);
-    free(arg);
-    vehiculo* coche_para_cola = &vehiculos[id];
+    vehiculo *coche_para_cola = (vehiculo *) malloc(sizeof(vehiculo));
+    // se copian los datos del vehiculo para evitar corrupcion
+    coche_para_cola->id = ((vehiculo *) arg)->id;
+    coche_para_cola->derecha = ((vehiculo *) arg)->derecha;
+    coche_para_cola->via = ((vehiculo *) arg)->via;
 
     // agregar a cola correspondiente
 
@@ -150,6 +151,7 @@ void *vehiculo_en_marcha(void *arg) {
         pthread_mutex_unlock(&display_state.display_mutex);
     }
 
+    // esperar un poco para que se agreguen vehiculos a la lista de espera
     sleep(1);
     // sacar primero vehiculo de cola de espera de una de las dos vias
     // si ambas colas tienen vehiculos pendientes
@@ -234,6 +236,7 @@ void *vehiculo_en_marcha(void *arg) {
 
     if (coche != NULL) {
         if (coche->via == este_oeste && coche->derecha) {
+            sleep(1); // tiempo para cruzar
             printf("girando a derecha -> id %d\n", coche->id);
             pthread_mutex_lock(&display_state.display_mutex);
             display_state.crossing_vehicle_id = coche->id;
@@ -242,7 +245,7 @@ void *vehiculo_en_marcha(void *arg) {
 
             fprintf(log_file, "[%s] Vehiculo %d del %s gira al norte.\n",
                     time_now_ns(), coche->id, coche->via == este_oeste ? "este-oeste" : "norte-sur");
-
+            free(coche);
             pthread_exit(0);
         }
 
@@ -259,6 +262,7 @@ void *vehiculo_en_marcha(void *arg) {
         fprintf(log_file, "[%s] Vehiculo %d del %s se fue de la interseccion.\n",
                 time_now_ns(), coche->id, coche->via == este_oeste ? "este-oeste" : "norte-sur");
 
+        free(coche);
         pthread_exit(0);
     }
 
@@ -276,7 +280,7 @@ void *vehiculo_en_marcha(void *arg) {
 int main(int argc, char **argv) {
     struct timespec req, rem;
     req.tv_sec = 0;
-    req.tv_nsec = 50000000;
+    req.tv_nsec = 100000000;
     // comprobar si cadena es entero: https://www.geeksforgeeks.org/check-given-string-valid-number-integer-floating-point/
     if (argc != 2 || !is_valid_integer(argv[1])) {
         fprintf(stderr, "usage: ./semaforo <positive integer>, for example: './semaforo 123'\n");
@@ -286,7 +290,7 @@ int main(int argc, char **argv) {
     const int RANGE_MIN = 0;
     const int RANGE_MAX = 5000;
 
-    const int MODULO_VIA_NORTE_OESTE = 5;
+    const int MODULO_VIA_NORTE_SUR = 5;
     const int MODULO_VIA_ESTE_OESTE = 4;
     const int MODULO_VIA_ESTE_NORTE = 9;
 
@@ -322,11 +326,9 @@ int main(int argc, char **argv) {
 
         int rd_num = rand_r(&seed) % (RANGE_MAX - RANGE_MIN + 1) + RANGE_MIN;
 
-        //printf("rd_num = %d\n", rd_num);
-
         vehiculo *coche = NULL;
         // usar modulo para llegada aleatoria de vehiculos en ambas vias
-        if (rd_num % MODULO_VIA_NORTE_OESTE == 0) {
+        if (rd_num % MODULO_VIA_NORTE_SUR == 0) {
             coche = crear_vehiculo(next_id, norte_sur, true);
             next_id++;
             contador_norte_sur++;
@@ -344,10 +346,7 @@ int main(int argc, char **argv) {
 
         if (coche != NULL) {
             // crear hilo pasando el coche correspondiente
-            vehiculos[next_id-1] = *coche;
-            int *id_ptr = malloc(sizeof(int));
-            *id_ptr = coche->id;
-            pthread_create(&hilos[next_id - 1], NULL, vehiculo_en_marcha, id_ptr);
+            pthread_create(&hilos[next_id - 1], NULL, vehiculo_en_marcha, coche);
             vias type = coche->via;
             if (type == 0) {
                 //printf("    vehiculo en via norte-sur creado\n");
@@ -372,7 +371,7 @@ int main(int argc, char **argv) {
                     coche->derecha == 1 ? "derecha" : "recto");
             free(timestamp);
         }
-        if (next_id > NUM_VEHICULOS) {
+        if (next_id == NUM_VEHICULOS) {
             // si se excede el numero de sitios en el arreglo, se termina la llegada de vehiculos
             status = 0;
         }
