@@ -31,6 +31,7 @@ pthread_mutex_t mutex_norte_sur = PTHREAD_MUTEX_INITIALIZER;
 
 FILE *log_file;
 FILE *rand_file;
+FILE *log_exit;
 
 typedef struct {
     int espera_este_oeste;
@@ -132,30 +133,26 @@ void *vehiculo_en_marcha(void *arg) {
 
     if (coche_para_cola->via == este_oeste) {
         if (coche_para_cola->id == 7) {
-            printf("I enter here but I dont get queued :/");
+            printf("I should not enter here... I am a on north-south lane\n");
         }
         agregar(&espera_este_oeste, coche_para_cola);
         n_este_oeste++;
-        pthread_mutex_lock(&espera_este_oeste.candado);
         printf("cola este-oeste: %d\n", n_este_oeste);
 
         pthread_mutex_lock(&display_state.display_mutex);
-        display_state.espera_este_oeste = espera_este_oeste.tamano;
+        display_state.espera_este_oeste = n_este_oeste;
         pthread_mutex_unlock(&display_state.display_mutex);
-        pthread_mutex_unlock(&espera_este_oeste.candado);
     } else if (coche_para_cola->via == norte_sur) {
         if (coche_para_cola->id == 7) {
-            printf("I should not enter here... I am a right turning car on east-west lane");
+            printf("I enter here, but I do not get queued :/\n");
         }
         agregar(&espera_norte_sur, coche_para_cola);
         n_norte_sur++;
-        pthread_mutex_lock(&espera_norte_sur.candado);
         pthread_mutex_lock(&display_state.display_mutex);
         printf("cola norte-sur: %d\n", n_norte_sur);
 
-        display_state.espera_norte_sur = espera_norte_sur.tamano;
+        display_state.espera_norte_sur = n_norte_sur;
         pthread_mutex_unlock(&display_state.display_mutex);
-        pthread_mutex_unlock(&espera_norte_sur.candado);
     }
 
     // sacar primero vehiculo de cola de espera de una de las dos vias
@@ -172,7 +169,7 @@ void *vehiculo_en_marcha(void *arg) {
         printf("cola este-oeste: %d\n", n_este_oeste);
 
         pthread_mutex_lock(&display_state.display_mutex);
-        display_state.espera_este_oeste = espera_este_oeste.tamano;
+        display_state.espera_este_oeste = n_este_oeste;
         pthread_mutex_unlock(&display_state.display_mutex);
 
         if (!coche->derecha) {
@@ -190,7 +187,6 @@ void *vehiculo_en_marcha(void *arg) {
 
         printf("cola norte-sur: %d\n", n_norte_sur);
 
-        pthread_mutex_lock(&espera_norte_sur.candado);
         pthread_mutex_lock(&display_state.display_mutex);
         display_state.espera_norte_sur = espera_norte_sur.tamano;
         pthread_mutex_unlock(&display_state.display_mutex);
@@ -245,8 +241,8 @@ void *vehiculo_en_marcha(void *arg) {
             fprintf(log_file, "[%s] Vehiculo %d del %s gira al norte.\n",
                     time_now_ns(), coche->id, coche->via == este_oeste ? "este-oeste" : "norte-sur");
 
-            //free(coche);
-            pthread_exit(NULL);
+            free(coche);
+            pthread_exit(0);
         }
 
         sem_wait(&sem);
@@ -262,16 +258,16 @@ void *vehiculo_en_marcha(void *arg) {
         fprintf(log_file, "[%s] Vehiculo %d del %s se fue de la interseccion.\n",
                 time_now_ns(), coche->id, coche->via == este_oeste ? "este-oeste" : "norte-sur");
 
-        //free(coche);
-        pthread_exit(NULL);
+        free(coche);
+        pthread_exit(0);
     }
 
     char *timestamp = time_now_ns();
     fprintf(log_file, "[%s] no se saco cocha en hilo de coche %d - %s\n", timestamp, coche_para_cola->id,
             coche_para_cola->via == este_oeste ? "este-oeste" : "norte-sur");
     free(timestamp);
-    printf("coche si es nulo\n");
-    return NULL;
+    printf("-------- coche es nulo -------------------\n");
+    return ((void*) 1);
 }
 
 int main(int argc, char **argv) {
@@ -308,7 +304,6 @@ int main(int argc, char **argv) {
     pthread_t display_thread;
     pthread_create(&display_thread, NULL, mostrar_en_pantalla, NULL);
 
-    // yo puedo eligir el ciclo que rapido se ejecuta el programa, todo abajo en while
     // 1) crear numero aleatorio
     int status = 1;
     int contador = 0;
@@ -362,20 +357,47 @@ int main(int argc, char **argv) {
         }
         sleep(1);
         if (coche != NULL) {
-            fprintf(rand_file, "id: %d | via: %s | dir: %s\n", coche->id,
+            char* timestamp = time_now_ns();
+            fprintf(rand_file, "[%s] id: %d | via: %s | dir: %s\n", timestamp, coche->id,
                     coche->via == este_oeste ? "este-oeste" : "norte-sur",
                     coche->derecha == 1 ? "derecha" : "recto");
             free(coche);
+            free(timestamp);
+        }
+        if (next_id > NUM_VEHICULOS) {
+            // si se excede el numero de sitios en el arreglo, se termina la llegada de vehiculos
+            status = 0;
         }
     }
 
     fprintf(rand_file, "num vehiculos total: %d", next_id);
     fclose(rand_file);
 
+    log_exit = fopen("thread_exit.log", "w");
+    fprintf(log_exit, "Thread Exit Log\n");
+    fclose(log_exit);
+
     // esperar la terminacion de todos los hilos creados
+
+    char* timestamp = "";
     for (int i = 0; i < next_id; i++) {
-        pthread_join(vehiculos[i], NULL);
+        void *exit_status;
+        // agregar a archivo log exisitendo, asi se guarda informacion de los demas hilos en
+        // caso de que uno no termina
+        log_exit = fopen("thread_exit.log", "a");
+        pthread_join(vehiculos[i], &exit_status);
+        int st = exit_status ? *(int *)exit_status : -1;
+        timestamp = time_now_ns();
+        if (st == -1) {
+            fprintf(log_exit, "[%s] Thread %d terminated with no status\n", timestamp, i);
+        } else {
+            fprintf(log_exit, "[%s] Thread %d terminated with status %d\n", timestamp, i, st);
+        }
+        fclose(log_exit);
+        free(exit_status);
+        free(timestamp);
     }
+
 
     fprintf(log_file, "Debug message\n");
     fprintf(log_file, "este-oeste: %d\n", contador_este_oeste);
@@ -386,6 +408,7 @@ int main(int argc, char **argv) {
 
     sem_destroy(&sem);
 
+    // esperar a hilo de pantalla para terminar
     pthread_join(display_thread, NULL);
 
     return 0;

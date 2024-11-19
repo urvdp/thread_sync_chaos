@@ -3,6 +3,7 @@
 //
 
 #include <pthread.h>
+#include <unistd.h>
 
 #include "vehiculo.h"
 

@@ -1,12 +1,12 @@
-id: 0 | via: este-oeste | dir: derecha
-id: 1 | via: este-oeste | dir: recto
-id: 2 | via: este-oeste | dir: recto
-id: 3 | via: norte-sur | dir: derecha
-id: 4 | via: este-oeste | dir: recto
-id: 5 | via: este-oeste | dir: derecha
-id: 6 | via: este-oeste | dir: recto
-id: 7 | via: norte-sur | dir: derecha
-id: 8 | via: este-oeste | dir: recto
-id: 9 | via: norte-sur | dir: derecha
-id: 10 | via: este-oeste | dir: recto
+[2024-11-19 15:40:52.501200998] id: 0 | via: este-oeste | dir: derecha
+[2024-11-19 15:40:53.501800197] id: 1 | via: este-oeste | dir: recto
+[2024-11-19 15:40:54.502569738] id: 2 | via: este-oeste | dir: recto
+[2024-11-19 15:40:55.503009449] id: 3 | via: norte-sur | dir: derecha
+[2024-11-19 15:40:59.503661848] id: 4 | via: este-oeste | dir: recto
+[2024-11-19 15:41:02.504138310] id: 5 | via: este-oeste | dir: derecha
+[2024-11-19 15:41:05.504780741] id: 6 | via: este-oeste | dir: recto
+[2024-11-19 15:41:08.505346298] id: 7 | via: norte-sur | dir: derecha
+[2024-11-19 15:41:11.506003235] id: 8 | via: este-oeste | dir: recto
+[2024-11-19 15:41:12.506508757] id: 9 | via: norte-sur | dir: derecha
+[2024-11-19 15:41:13.506909765] id: 10 | via: este-oeste | dir: recto
 num vehiculos total: 11
