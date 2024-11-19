@@ -1,0 +1,12 @@
+id: 0 | via: este-oeste | dir: derecha
+id: 1 | via: este-oeste | dir: recto
+id: 2 | via: este-oeste | dir: recto
+id: 3 | via: norte-sur | dir: derecha
+id: 4 | via: este-oeste | dir: recto
+id: 5 | via: este-oeste | dir: derecha
+id: 6 | via: este-oeste | dir: recto
+id: 7 | via: norte-sur | dir: derecha
+id: 8 | via: este-oeste | dir: recto
+id: 9 | via: norte-sur | dir: derecha
+id: 10 | via: este-oeste | dir: recto
+num vehiculos total: 11

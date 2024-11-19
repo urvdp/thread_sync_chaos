@@ -1,0 +1,6 @@
+/.idea
+/cmake-build-debug
+main.o
+cola.o
+semaforo
+vehiculo.o
