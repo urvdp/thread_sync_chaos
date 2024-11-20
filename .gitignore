@@ -4,3 +4,5 @@ main.o
 cola.o
 semaforo
 vehiculo.o
+CMakeCache.txt
+CMakeFiles
