@@ -46,6 +46,7 @@ void *vehiculo_en_marcha(void *arg) {
     coche_para_cola->derecha = ((vehiculo *) arg)->derecha;
     coche_para_cola->via = ((vehiculo *) arg)->via;
 
+
     // agregar a cola correspondiente
     if (coche_para_cola->via == este_oeste) {
         agregar(&espera_este_oeste, coche_para_cola);
@@ -75,6 +76,7 @@ void *vehiculo_en_marcha(void *arg) {
 
     // esperar un poco para que se agreguen vehiculos a la lista de espera
     sleep(1);
+    free(arg); // liberar memoria solamente aqui para que se liberara ya en el main while
     // sacar primero vehiculo de cola de espera de una de las dos vias
     // si ambas colas tienen vehiculos pendientes
     vehiculo *coche = NULL;
@@ -180,15 +182,19 @@ void *vehiculo_en_marcha(void *arg) {
             display_state.espera_este_oeste--;
             pthread_mutex_unlock(&display_state.display_mutex);
 
+            char* timecheck = time_now_ns();
             fprintf(log_file, "[%s] Vehiculo %d del %s gira al norte.\n",
-                    time_now_ns(), coche->id, coche->via == este_oeste ? "este-oeste" : "norte-sur");
+                    timecheck, coche->id, coche->via == este_oeste ? "este-oeste" : "norte-sur");
+            free(timecheck);
             free(coche);
             pthread_exit(0);
         }
 
         sem_wait(&sem);
+        char* timecheck = time_now_ns();
         fprintf(log_file, "[%s] Vehiculo %d del %s esta pasando.\n",
-                time_now_ns(), coche->id, coche->via == este_oeste ? "este-oeste" : "norte-sur");
+                timecheck, coche->id, coche->via == este_oeste ? "este-oeste" : "norte-sur");
+        free(timecheck);
         pthread_mutex_lock(&display_state.display_mutex);
         display_state.crossing_vehicle_id = coche->id;
         strcpy(display_state.crossing_dir, coche->via == este_oeste ? "este-oeste" : "norte-sur");
@@ -201,9 +207,10 @@ void *vehiculo_en_marcha(void *arg) {
         sleep(2); // tiempo para cruzar
         sem_post(&sem);
 
+        char* timestamp = time_now_ns();
         fprintf(log_file, "[%s] Vehiculo %d del %s se fue de la interseccion.\n",
-                time_now_ns(), coche->id, coche->via == este_oeste ? "este-oeste" : "norte-sur");
-
+                timestamp, coche->id, coche->via == este_oeste ? "este-oeste" : "norte-sur");
+        free(timestamp);
         free(coche);
         pthread_exit(0);
     }
@@ -295,6 +302,9 @@ int main(int argc, char **argv) {
         }
 
         if (coche != NULL) {
+            if (debug) {
+                printf("Se creo un vehiculo %d\n", coche->id);
+            }
             // crear hilo pasando el coche correspondiente
             pthread_create(&hilos[next_id - 1], NULL, vehiculo_en_marcha, coche);
             if (debug) {
@@ -322,6 +332,9 @@ int main(int argc, char **argv) {
                     coche->via == este_oeste ? "este-oeste" : "norte-sur",
                     coche->derecha == 1 ? "derecha" : "recto");
             free(timestamp);
+            // Liberar memoria original despues de la creacion del hilo
+            // el hilo maneja su propia copia de la memoria
+            coche = NULL;
         }
         if (next_id == NUM_VEHICULOS) {
             // si se excede el numero de sitios en el arreglo, se termina la llegada de vehiculos
