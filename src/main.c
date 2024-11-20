@@ -172,13 +172,13 @@ void *vehiculo_en_marcha(void *arg) {
 
         if (coche->via == este_oeste && coche->derecha) {
             // en case de la via este-oeste que el vehicula gira a la derecha, no tiene que esperar al paso a la interseccion
-            sleep(1); // tiempo para girar a derecha
+            sleep(2); // tiempo para girar a derecha
             if (debug) {
                 printf("girando a derecha -> id %d\n", coche->id);
             }
             pthread_mutex_lock(&display_state.display_mutex);
             display_state.crossing_vehicle_id = coche->id;
-            strcpy(display_state.crossing_dir, "girando a la derecha hacia norte");
+            strcpy(display_state.crossing_dir, "girando a la derecha");
             display_state.espera_este_oeste--;
             pthread_mutex_unlock(&display_state.display_mutex);
 
@@ -204,7 +204,7 @@ void *vehiculo_en_marcha(void *arg) {
             display_state.espera_norte_sur--;
         }
         pthread_mutex_unlock(&display_state.display_mutex);
-        sleep(2); // tiempo para cruzar
+        sleep(3); // tiempo para cruzar
         sem_post(&sem);
 
         char* timestamp = time_now_ns();

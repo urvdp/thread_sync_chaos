@@ -1,6 +1,6 @@
 # Compiler and flags
 CC = gcc
-CFLAGS = -Wall -Wextra -g -Iinclude
+CFLAGS = -Wall -Wextra -g -Iinclude # -I tells the compiler to look in the directory afterwards for headers
 LDFLAGS = -lncurses -lpthread
 
 # Source and object files

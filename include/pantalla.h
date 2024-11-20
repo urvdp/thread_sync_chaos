@@ -7,12 +7,14 @@
 #define PANTALLA_H
 
 #define _POSIX_C_SOURCE 200112L
+#define BUFFER_SIZE 3
 
 #include <stdlib.h>
 #include <ncurses.h>
 #include <pthread.h>
 #include <string.h>
 #include <time.h>
+#include <stdbool.h>
 
 #include "utils.h"
 
@@ -20,7 +22,7 @@ typedef struct {
     int espera_este_oeste;
     int espera_norte_sur;
     int crossing_vehicle_id; // ID del vehiculo en la interseccion en este momento (-1 si es ninguno)
-    char crossing_dir[50]; // "norte-sur" o "este-oeste" o "girando hacia el norte"
+    char crossing_dir[50]; // "norte-sur" o "este-oeste" o "girando a la derecha"
     pthread_mutex_t display_mutex; // Mutex para proteger acceso a variables compartidas
 } DisplayState;
 

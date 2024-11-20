@@ -29,14 +29,33 @@ void *mostrar_en_pantalla(void *arg) {
     int *status = (int *)arg;
     struct timespec ts;
     ts.tv_sec = 0;
-    ts.tv_nsec = 500000000;
+    ts.tv_nsec = 400000000;
+
+    int offset = 28;
 
     display_file = fopen("logs/display.log", "w");
     fprintf(display_file, "Display Log\n");
 
+    // get max terminal height and width
+    int rows, cols;
+    getmaxyx(stdscr, rows, cols);
+
+    int buffer_este_oeste[BUFFER_SIZE];
+    int buffer_norte_sur[BUFFER_SIZE];
+    int buffer_girando[BUFFER_SIZE];
+
+    for (int k = 0; k < BUFFER_SIZE; k++) {
+        buffer_este_oeste[k] = -1;
+        buffer_norte_sur[k] = -1;
+        buffer_girando[k] = -1;
+    }
+
+    const int max_proc = 7;
+
+    int local_espera_este_oeste, local_espera_norte_sur = 0;
+    int local_crossing_vehicle_id = -1;
+    char local_crossing_dir[25];
     while (*status == 1) {
-        int local_espera_este_oeste, local_espera_norte_sur, local_crossing_vehicle_id;
-        char local_crossing_dir[25];
 
         pthread_mutex_lock(&display_state.display_mutex);
         local_espera_este_oeste = display_state.espera_este_oeste;
@@ -47,15 +66,143 @@ void *mostrar_en_pantalla(void *arg) {
 
         // Clear and redraw the layout
         clear();
-        mvprintw(0, 10, "==== trafico interseccion simulacion ====");
+        mvprintw(0, 5, "==== simulacion de interseccion de trafico ====");
         mvprintw(2, 5, "este-oeste cola: %d", local_espera_este_oeste);
-        mvprintw(3, 5, "norte-sur cola: %d", local_espera_norte_sur);
+        mvprintw(4, 5, "norte-sur cola: %d", local_espera_norte_sur);
+        //mvprintw(3, 5, "rows: %d cols: %d", rows, cols);
 
+        int row_offset = 2;
         if (local_crossing_vehicle_id != -1) {
-            mvprintw(5, 5, "Vehicle %d is crossing (%s).",
+            mvprintw(row_offset+8, offset, "Vehicle %d is crossing (%s).",
                      local_crossing_vehicle_id, local_crossing_dir);
         } else {
-            mvprintw(5, 5, "No vehicle currently crossing.");
+            mvprintw(row_offset+8, offset, "No vehicle currently crossing.");
+        }
+
+        // display intersection
+
+        // static section
+        mvprintw(row_offset-1, offset + 12, "norte");
+        mvprintw(row_offset+6, offset + 21, "sur");
+        mvprintw(row_offset+6, offset, "oeste");
+        mvprintw(row_offset+6, offset + 41, "este");
+        for (int i = row_offset; i < (row_offset + 3); i++) {
+            for (int j = 0; j < 18; j+=2) {
+                    mvprintw(i, offset + j, "#");
+            }
+            // leave 5 spaces
+            if (i % 2 != 0) {
+                mvprintw(i, offset + 18 + 4, "|");
+            }
+            for (int j = 0; j < 18; j+=2) {
+                mvprintw(i, offset + 18 + 10 + j, "#");
+            }
+        }
+
+        for (int j = 0; j < 46; j+=2) {
+            mvprintw(row_offset + 5, offset + j, "#");
+        }
+
+        // dynamic section
+        int vehicle_spacing = 2;
+
+        // vehiculos en esperando en via este-oeste
+        int east_west_col = 28;
+        int east_west_row = row_offset + 4;
+
+        int n_este_oeste = local_espera_este_oeste;
+        if (n_este_oeste + offset + east_west_col > cols) {
+            n_este_oeste = cols - offset - east_west_col;
+        }
+        for (int k = 0; k < n_este_oeste; k++) {
+            mvprintw(east_west_row, offset + east_west_col + (k * vehicle_spacing), "o");
+        }
+
+        // vehiculos esperando en via norte-sur
+        int north_south_col = 19;
+        int north_south_row = row_offset + 3;
+
+        int n_norte_sur = local_espera_norte_sur;
+        if (n_norte_sur > 5) {
+            n_norte_sur = 5;
+        }
+
+        for (int k=n_norte_sur; k > 0; k--) {
+            mvprintw(north_south_row - k, offset + north_south_col, "o");
+        }
+
+        // procesamiento de cruce
+        if (local_crossing_vehicle_id != -1) {
+            // hay un vehiculo cruzando la interseccion, trigger la ejecucion de mostrarlo en pantalla
+            // este-oeste o norte-sur -> 2s, girar al norte -> 1s
+            // tiempo de actualizacion: 0.5s
+            // -1 significa que buffer esta vacio y se puede asignar vehiculo
+            if (strcmp("este-oeste", local_crossing_dir) == 0) {
+                // vehiculo pasa del este al oeste
+                for (int k = 0; k < BUFFER_SIZE; k++) {
+                    if (buffer_este_oeste[k] == -1) {
+                        buffer_este_oeste[k] = 0;
+                    }
+                }
+            } else if (strcmp("norte-sur", local_crossing_dir) == 0) {
+                // vehiculo pasa del norte al oeste
+                for (int k = 0; k < BUFFER_SIZE; k++) {
+                    if (buffer_norte_sur[k] == -1) {
+                        buffer_norte_sur[k] = 0;
+                    }
+                }
+            } else if (strcmp("girando a la derecha", local_crossing_dir) == 0) {
+                // vehiculo pasa del este al norte
+                for (int k = 0; k < BUFFER_SIZE; k++) {
+                    if (buffer_girando[k] == -1) {
+                        buffer_girando[k] = 0;
+                    }
+                }
+            }
+        }
+
+
+        // comprobar si hay vehiculos en el buffer cruzando y procesar
+        for (int k = 0; k < BUFFER_SIZE; k++) {
+            int estado_este_oeste = buffer_este_oeste[k];
+            if (estado_este_oeste != -1) {
+                mvprintw(east_west_row, offset + east_west_col - 4 - 4 * estado_este_oeste, "o");
+                buffer_este_oeste[k]++;
+                if (estado_este_oeste == max_proc) {
+                    // reset buffer
+                    buffer_este_oeste[k] = -1;
+                }
+            }
+            int estado_norte_sur = buffer_norte_sur[k];
+            if (estado_norte_sur != -1) {
+                if (estado_norte_sur == 0) {
+                    // pasando al cruze
+                    mvprintw(north_south_row+1, offset + north_south_col, "o");
+                    buffer_norte_sur[k]++;
+                } else {
+                    // manejando al oeste
+                    mvprintw(north_south_row+1, offset + north_south_col - 4 - 4 * (estado_este_oeste-1), "o");
+                    buffer_norte_sur[k]++;
+                    if (estado_norte_sur == max_proc) {
+                        buffer_norte_sur[k] = -1;
+                    }
+                }
+            }
+            int estado_gira = buffer_girando[k];
+            if (estado_gira != -1) {
+                // haciendo la gira a la derecha al norte
+                if (estado_gira == 0) {
+                    mvprintw(east_west_row, offset + east_west_col - 3, "o");
+                    buffer_girando[k]++;
+                }
+                else {
+                    mvprintw(east_west_row - estado_gira, offset + east_west_col - 3, "o");
+                    buffer_girando[k]++;
+                    if (estado_gira == max_proc) {
+                        buffer_girando[k] = -1;
+                    }
+                }
+            }
         }
 
         char* timestamp = time_now_ns();
