@@ -234,7 +234,7 @@ int main(int argc, char **argv) {
     req.tv_nsec = 100000000;
     // comprobar si cadena es entero:
     // https://www.geeksforgeeks.org/check-given-string-valid-number-integer-floating-point/
-    if (argc == 3 && !(!is_valid_integer(argv[1]) || argv[2] == "-v")) {
+    if (argc == 3 && !(!is_valid_integer(argv[1]) || (!strcmp(argv[2], "-v") == 0))) {
         printf("se usa output verbose para debugging\n");
         debug = true;
     } else if (argc != 2 || !is_valid_integer(argv[1])) {
