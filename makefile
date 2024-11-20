@@ -1,31 +1,33 @@
+# Compiler and flags
 CC = gcc
-CFLAGS = -std=c99 -lrt -lncurses
-TARGET = semaforo
-OBJS = main.o vehiculo.o cola.o pantalla.o utils.o
-ARG = 123
+CFLAGS = -Wall -Wextra -g -Iinclude
+LDFLAGS = -lncurses -lpthread
 
-default: $(TARGET)
+# Source and object files
+SRCS = src/main.c src/pantalla.c src/cola.c src/utils.c src/vehiculo.c
+OBJS = $(SRCS:.c=.o) # Convert .c to .o automatically
 
+# Target executable
+TARGET = build/semaforo
+
+# Arguments for the program
+ARGS = 123
+
+# Default target
+all: $(TARGET)
+
+# Build the target
 $(TARGET): $(OBJS)
-	$(CC) $(OBJS) -o $(TARGET) $(CFLAGS)
+	$(CC) $(OBJS) -o $@ $(LDFLAGS)
 
-vehiculo.o: vehiculo.c vehiculo.h
-	$(CC) -c vehiculo.c -o vehiculo.o $(CFLAGS)
+# Rule for compiling .c to .o
+%.o: %.c
+	$(CC) $(CFLAGS) -c $< -o $@
 
-cola.o: cola.c cola.h
-	$(CC) -c cola.c -o cola.o $(CFLAGS)
-
-pantalla.o: pantalla.c pantalla.h
-	$(CC) -c pantalla.c -o pantalla.o $(CFLAGS)
-
-utils.o: utils.c utils.h
-	$(CC) -c utils.c -o utils.o $(CFLAGS)
-
-run:
-	./$(TARGET) $(ARG)
-
+# Clean target
 clean:
-	rm -f *.o
+	rm -f $(OBJS) $(TARGET)
 
-purge:
-	rm -f $(TARGET)
+# Run target
+run: $(TARGET)
+	./$(TARGET) $(ARGS)

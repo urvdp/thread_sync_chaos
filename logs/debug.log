@@ -1,35 +1,35 @@
-[2024-11-19 23:24:02.064664110] Vehiculo 1 del este-oeste esta pasando.
-[2024-11-19 23:24:02.964464605] Vehiculo 0 del este-oeste gira al norte.
-[2024-11-19 23:24:04.064882991] Vehiculo 1 del este-oeste se fue de la interseccion.
-[2024-11-19 23:24:04.064908017] Vehiculo 3 del norte-sur esta pasando.
-[2024-11-19 23:24:04.569043709] Vehiculo 5 del este-oeste gira al norte.
-[2024-11-19 23:24:06.065063659] Vehiculo 3 del norte-sur se fue de la interseccion.
-[2024-11-19 23:24:06.065127941] Vehiculo 2 del este-oeste esta pasando.
-[2024-11-19 23:24:08.065328652] Vehiculo 2 del este-oeste se fue de la interseccion.
-[2024-11-19 23:24:08.065413963] Vehiculo 7 del norte-sur esta pasando.
-[2024-11-19 23:24:10.065614904] Vehiculo 7 del norte-sur se fue de la interseccion.
-[2024-11-19 23:24:10.065681056] Vehiculo 4 del este-oeste esta pasando.
-[2024-11-19 23:24:12.065872071] Vehiculo 4 del este-oeste se fue de la interseccion.
-[2024-11-19 23:24:12.065926985] Vehiculo 9 del norte-sur esta pasando.
-[2024-11-19 23:24:14.066114650] Vehiculo 9 del norte-sur se fue de la interseccion.
-[2024-11-19 23:24:14.066166896] Vehiculo 6 del este-oeste esta pasando.
-[2024-11-19 23:24:16.066282444] Vehiculo 6 del este-oeste se fue de la interseccion.
-[2024-11-19 23:24:16.066344045] Vehiculo 8 del este-oeste esta pasando.
-[2024-11-19 23:24:18.066536521] Vehiculo 8 del este-oeste se fue de la interseccion.
-[2024-11-19 23:24:18.066571174] Vehiculo 10 del este-oeste esta pasando.
-[2024-11-19 23:24:20.066674969] Vehiculo 10 del este-oeste se fue de la interseccion.
-[2024-11-19 23:24:20.066693573] Vehiculo 11 del este-oeste esta pasando.
-[2024-11-19 23:24:22.066880599] Vehiculo 11 del este-oeste se fue de la interseccion.
-[2024-11-19 23:24:22.066914756] Vehiculo 16 del norte-sur esta pasando.
-[2024-11-19 23:24:24.067098552] Vehiculo 16 del norte-sur se fue de la interseccion.
-[2024-11-19 23:24:24.067204713] Vehiculo 12 del este-oeste esta pasando.
-[2024-11-19 23:24:26.067395465] Vehiculo 12 del este-oeste se fue de la interseccion.
-[2024-11-19 23:24:26.067479939] Vehiculo 13 del este-oeste esta pasando.
-[2024-11-19 23:24:28.067667791] Vehiculo 13 del este-oeste se fue de la interseccion.
-[2024-11-19 23:24:28.067753856] Vehiculo 14 del este-oeste esta pasando.
-[2024-11-19 23:24:30.067899608] Vehiculo 14 del este-oeste se fue de la interseccion.
-[2024-11-19 23:24:30.067993473] Vehiculo 15 del este-oeste esta pasando.
-[2024-11-19 23:24:32.068178601] Vehiculo 15 del este-oeste se fue de la interseccion.
+[2024-11-20 00:03:02.714324694] Vehiculo 1 del este-oeste esta pasando.
+[2024-11-20 00:03:03.613939512] Vehiculo 0 del este-oeste gira al norte.
+[2024-11-20 00:03:04.714489727] Vehiculo 1 del este-oeste se fue de la interseccion.
+[2024-11-20 00:03:04.714522244] Vehiculo 3 del norte-sur esta pasando.
+[2024-11-20 00:03:05.217640201] Vehiculo 5 del este-oeste gira al norte.
+[2024-11-20 00:03:06.714610983] Vehiculo 3 del norte-sur se fue de la interseccion.
+[2024-11-20 00:03:06.714619759] Vehiculo 2 del este-oeste esta pasando.
+[2024-11-20 00:03:08.714798316] Vehiculo 2 del este-oeste se fue de la interseccion.
+[2024-11-20 00:03:08.714864717] Vehiculo 7 del norte-sur esta pasando.
+[2024-11-20 00:03:10.715054045] Vehiculo 7 del norte-sur se fue de la interseccion.
+[2024-11-20 00:03:10.715128091] Vehiculo 4 del este-oeste esta pasando.
+[2024-11-20 00:03:12.715338131] Vehiculo 4 del este-oeste se fue de la interseccion.
+[2024-11-20 00:03:12.715379549] Vehiculo 9 del norte-sur esta pasando.
+[2024-11-20 00:03:14.715512706] Vehiculo 9 del norte-sur se fue de la interseccion.
+[2024-11-20 00:03:14.715605168] Vehiculo 6 del este-oeste esta pasando.
+[2024-11-20 00:03:16.715708091] Vehiculo 6 del este-oeste se fue de la interseccion.
+[2024-11-20 00:03:16.715782223] Vehiculo 8 del este-oeste esta pasando.
+[2024-11-20 00:03:18.715942487] Vehiculo 8 del este-oeste se fue de la interseccion.
+[2024-11-20 00:03:18.716026750] Vehiculo 10 del este-oeste esta pasando.
+[2024-11-20 00:03:20.716137409] Vehiculo 10 del este-oeste se fue de la interseccion.
+[2024-11-20 00:03:20.716220722] Vehiculo 11 del este-oeste esta pasando.
+[2024-11-20 00:03:22.716372631] Vehiculo 11 del este-oeste se fue de la interseccion.
+[2024-11-20 00:03:22.716414157] Vehiculo 16 del norte-sur esta pasando.
+[2024-11-20 00:03:24.716617708] Vehiculo 16 del norte-sur se fue de la interseccion.
+[2024-11-20 00:03:24.716684117] Vehiculo 12 del este-oeste esta pasando.
+[2024-11-20 00:03:26.716874857] Vehiculo 12 del este-oeste se fue de la interseccion.
+[2024-11-20 00:03:26.716959049] Vehiculo 13 del este-oeste esta pasando.
+[2024-11-20 00:03:28.717070561] Vehiculo 13 del este-oeste se fue de la interseccion.
+[2024-11-20 00:03:28.717082050] Vehiculo 14 del este-oeste esta pasando.
+[2024-11-20 00:03:30.717276321] Vehiculo 14 del este-oeste se fue de la interseccion.
+[2024-11-20 00:03:30.717339001] Vehiculo 15 del este-oeste esta pasando.
+[2024-11-20 00:03:32.717507036] Vehiculo 15 del este-oeste se fue de la interseccion.
 Debug message
 este-oeste: 11
 norte-sur: 4
