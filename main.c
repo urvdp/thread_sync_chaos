@@ -3,7 +3,6 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <ctype.h>
 #include <stdbool.h>
 #include <unistd.h>
 #include <string.h>
@@ -11,15 +10,17 @@
 
 #include <pthread.h>
 #include <semaphore.h>
-#include <ncurses.h>
 
 #include "vehiculo.h"
 #include "cola.h"
+#include "pantalla.h"
+#include "utils.h"
 
 #define NUM_VEHICULOS 100
 
 bool debug = false;
 
+// parametros necesitados para asegurar sincronizacion entre procesos usando posix utilidadas incluyendo pthread y semaphore
 sem_t sem;
 pthread_t hilos[NUM_VEHICULOS];
 bool turno_este_oeste = true; // flag para que las posibilidades en ambas colas de espera sean iguales
@@ -31,112 +32,12 @@ int n_norte_sur = 0;
 pthread_mutex_t mutex_este_oeste = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t mutex_norte_sur = PTHREAD_MUTEX_INITIALIZER;
 
+// definicion de punteros a archivos log
 FILE *log_file;
 FILE *rand_file;
 FILE *log_exit;
-FILE *display_file;
 
-typedef struct {
-    int espera_este_oeste;
-    int espera_norte_sur;
-    int crossing_vehicle_id; // ID del vehiculo en la interseccion en este momento (-1 si es ninguno)
-    char crossing_dir[50]; // "norte-sur" o "este-oeste" o "girando hacia el norte"
-    pthread_mutex_t display_mutex; // Mutex para proteger acceso a variables compartidas
-} DisplayState;
-
-DisplayState display_state = {
-    .espera_este_oeste = 0,
-    .espera_norte_sur = 0,
-    .crossing_vehicle_id = -1,
-    .crossing_dir = "",
-    .display_mutex = PTHREAD_MUTEX_INITIALIZER
-};
-
-bool is_valid_integer(const char *str) {
-    // null or empty check
-    if (str == NULL || *str == '\0') {
-        return false;
-    }
-
-    while (*str) {
-        if (!isdigit(*str)) {
-            return false;
-        }
-        str++;
-    }
-    return true;
-}
-
-char *time_now_ns() {
-    struct timespec ts;
-    struct tm *local_time;
-    char *timestamp = malloc(30 * sizeof(char)); // Allocate extra space for nanoseconds
-    if (timestamp == NULL) {
-        perror("Failed to allocate memory for timestamp");
-        exit(EXIT_FAILURE);
-    }
-
-    // Get the current time with nanoseconds
-    clock_gettime(CLOCK_REALTIME, &ts);
-
-    // Convert seconds to local time
-    local_time = localtime(&ts.tv_sec);
-
-    // Format time as "YYYY-MM-DD HH:MM:SS.nnnnnnnnn"
-    strftime(timestamp, 30, "%Y-%m-%d %H:%M:%S", local_time);
-    sprintf(timestamp + 19, ".%09ld", ts.tv_nsec); // Append nanoseconds
-
-    return timestamp; // usuario es responsable para liberar memoria
-}
-
-void *mostrar_en_pantalla(void *arg) {
-    int *status = (int *)arg;
-    struct timespec ts;
-    ts.tv_sec = 0;
-    ts.tv_nsec = 500000000;
-
-    display_file = fopen("logs/display.log", "w");
-    fprintf(display_file, "Display Log\n");
-
-    while (*status == 1) {
-        int local_espera_este_oeste, local_espera_norte_sur, local_crossing_vehicle_id;
-        char local_crossing_dir[25];
-
-        pthread_mutex_lock(&display_state.display_mutex);
-        local_espera_este_oeste = display_state.espera_este_oeste;
-        local_espera_norte_sur = display_state.espera_norte_sur;
-        local_crossing_vehicle_id = display_state.crossing_vehicle_id;
-        strcpy(local_crossing_dir, display_state.crossing_dir);
-        pthread_mutex_unlock(&display_state.display_mutex);
-
-        // Clear and redraw the layout
-        clear();
-        mvprintw(0, 10, "==== trafico interseccion simulacion ====");
-        mvprintw(2, 5, "este-oeste cola: %d", local_espera_este_oeste);
-        mvprintw(3, 5, "norte-sur cola: %d", local_espera_norte_sur);
-
-        if (local_crossing_vehicle_id != -1) {
-            mvprintw(5, 5, "Vehicle %d is crossing (%s).",
-                     local_crossing_vehicle_id, local_crossing_dir);
-        } else {
-            mvprintw(5, 5, "No vehicle currently crossing.");
-        }
-
-        char* timestamp = time_now_ns();
-        fprintf(display_file, "[%s] e/o: %d | n/s: %d\n", timestamp, local_espera_este_oeste, local_espera_norte_sur);
-        free(timestamp);
-        refresh();
-        nanosleep(&ts, NULL);
-        //sleep(1);
-    }
-
-    fclose(display_file);
-    // exiting gracefully
-    pthread_exit(0);
-}
-
-
-
+// funcion principal de hilos
 void *vehiculo_en_marcha(void *arg) {
     // usando la estructura vehiculo, se pasan los parametros para saber en que via y a cual direccion va
     vehiculo *coche_para_cola = (vehiculo *) malloc(sizeof(vehiculo));
@@ -250,7 +151,6 @@ void *vehiculo_en_marcha(void *arg) {
     // concludiendo, siempre algun vehiculo esta elegido para pasar la interseccion
 
     if (coche != NULL) {
-
         // la logica funciona, pero para mostrar realmente cuantos aun estan esperando en el semaforo
         // para recibir el paso por el sem_wait necesito otra lista de espera que son los activos
         // que ya se sacaron de la lista de espera de llegada y son los proximos en pasar
@@ -294,8 +194,7 @@ void *vehiculo_en_marcha(void *arg) {
         strcpy(display_state.crossing_dir, coche->via == este_oeste ? "este-oeste" : "norte-sur");
         if (coche->via == este_oeste) {
             display_state.espera_este_oeste--;
-        }
-        else {
+        } else {
             display_state.espera_norte_sur--;
         }
         pthread_mutex_unlock(&display_state.display_mutex);
@@ -348,10 +247,7 @@ int main(int argc, char **argv) {
 
     // Inicializar ncurses
     if (!debug) {
-        initscr();
-        cbreak();
-        noecho();
-        curs_set(0);
+        init_pantalla();
     }
 
     // inicializar semaforo para cruzar
@@ -476,13 +372,13 @@ int main(int argc, char **argv) {
     log_exit = fopen("logs/thread_exit.log", "a");
     display_status = 0;
     pthread_join(display_thread, NULL);
-    char* exit_time = time_now_ns();
+    char *exit_time = time_now_ns();
     fprintf(log_exit, "[%s] Display thread terminated\n", exit_time);
     fclose(log_exit);
     free(exit_time);
 
     if (!debug) {
-        endwin();
+        reset_pantalla();
     }
 
     return 0;

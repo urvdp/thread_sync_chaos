@@ -7,4 +7,8 @@ add_executable(sistemas_operativos_tarea3 main.c
         vehiculo.c
         vehiculo.h
         cola.c
-        cola.h)
+        cola.h
+        pantalla.c
+        pantalla.h
+        utils.c
+        utils.h)
