@@ -1,12 +1,18 @@
-[2024-11-19 18:57:08.071256725] id: 0 | via: este-oeste | dir: derecha
-[2024-11-19 18:57:08.171512413] id: 1 | via: este-oeste | dir: recto
-[2024-11-19 18:57:08.271699685] id: 2 | via: este-oeste | dir: recto
-[2024-11-19 18:57:08.371895471] id: 3 | via: norte-sur | dir: derecha
-[2024-11-19 18:57:08.772368449] id: 4 | via: este-oeste | dir: recto
-[2024-11-19 18:57:09.072833473] id: 5 | via: este-oeste | dir: derecha
-[2024-11-19 18:57:09.373260766] id: 6 | via: este-oeste | dir: recto
-[2024-11-19 18:57:09.673660112] id: 7 | via: norte-sur | dir: derecha
-[2024-11-19 18:57:09.974001907] id: 8 | via: este-oeste | dir: recto
-[2024-11-19 18:57:10.074208255] id: 9 | via: norte-sur | dir: derecha
-[2024-11-19 18:57:10.174402977] id: 10 | via: este-oeste | dir: recto
-num vehiculos total: 11
+[2024-11-19 22:39:14.791389157] id: 0 | via: este-oeste | dir: derecha
+[2024-11-19 22:39:14.891749655] id: 1 | via: este-oeste | dir: recto
+[2024-11-19 22:39:14.992179762] id: 2 | via: este-oeste | dir: recto
+[2024-11-19 22:39:15.092622392] id: 3 | via: norte-sur | dir: derecha
+[2024-11-19 22:39:15.493371241] id: 4 | via: este-oeste | dir: recto
+[2024-11-19 22:39:15.794099802] id: 5 | via: este-oeste | dir: derecha
+[2024-11-19 22:39:16.094761103] id: 6 | via: este-oeste | dir: recto
+[2024-11-19 22:39:16.395488581] id: 7 | via: norte-sur | dir: derecha
+[2024-11-19 22:39:16.696052612] id: 8 | via: este-oeste | dir: recto
+[2024-11-19 22:39:16.796414462] id: 9 | via: norte-sur | dir: derecha
+[2024-11-19 22:39:16.896857130] id: 10 | via: este-oeste | dir: recto
+[2024-11-19 22:39:17.297758989] id: 11 | via: este-oeste | dir: recto
+[2024-11-19 22:39:17.498448440] id: 12 | via: este-oeste | dir: recto
+[2024-11-19 22:39:17.598894032] id: 13 | via: este-oeste | dir: recto
+[2024-11-19 22:39:17.799448932] id: 14 | via: este-oeste | dir: recto
+[2024-11-19 22:39:18.000125665] id: 15 | via: este-oeste | dir: recto
+[2024-11-19 22:39:18.400882395] id: 16 | via: norte-sur | dir: derecha
+num vehiculos total: 17

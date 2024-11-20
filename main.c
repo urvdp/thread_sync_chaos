@@ -34,12 +34,13 @@ pthread_mutex_t mutex_norte_sur = PTHREAD_MUTEX_INITIALIZER;
 FILE *log_file;
 FILE *rand_file;
 FILE *log_exit;
+FILE *display_file;
 
 typedef struct {
     int espera_este_oeste;
     int espera_norte_sur;
     int crossing_vehicle_id; // ID del vehiculo en la interseccion en este momento (-1 si es ninguno)
-    char crossing_dir[16]; // "norte-sur" o "este-oeste"
+    char crossing_dir[50]; // "norte-sur" o "este-oeste" o "girando hacia el norte"
     pthread_mutex_t display_mutex; // Mutex para proteger acceso a variables compartidas
 } DisplayState;
 
@@ -66,38 +67,6 @@ bool is_valid_integer(const char *str) {
     return true;
 }
 
-void *mostrar_en_pantalla(void *arg) {
-    int *status = (int *)arg;
-    struct timespec ts;
-    ts.tv_sec = 0;
-    ts.tv_nsec = 500000000;
-
-    while (*status == 1) {
-        pthread_mutex_lock(&display_state.display_mutex);
-
-        // Clear and redraw the layout
-        clear();
-        mvprintw(0, 10, "==== trafico interseccion simulacion ====");
-        mvprintw(2, 5, "este-oeste cola: %d", display_state.espera_este_oeste);
-        mvprintw(3, 5, "norte-sur cola: %d", display_state.espera_norte_sur);
-
-        if (display_state.crossing_vehicle_id != -1) {
-            mvprintw(5, 5, "Vehicle %d is crossing (%s).",
-                     display_state.crossing_vehicle_id, display_state.crossing_dir);
-        } else {
-            mvprintw(5, 5, "No vehicle currently crossing.");
-        }
-
-        refresh();
-        pthread_mutex_unlock(&display_state.display_mutex);
-
-        // Refresh the display every 500ms
-        nanosleep(&ts, NULL);;
-    }
-    // exiting gracefully
-    pthread_exit(0);
-}
-
 char *time_now_ns() {
     struct timespec ts;
     struct tm *local_time;
@@ -117,8 +86,56 @@ char *time_now_ns() {
     strftime(timestamp, 30, "%Y-%m-%d %H:%M:%S", local_time);
     sprintf(timestamp + 19, ".%09ld", ts.tv_nsec); // Append nanoseconds
 
-    return timestamp; // Caller is responsible for freeing this memory
+    return timestamp; // usuario es responsable para liberar memoria
 }
+
+void *mostrar_en_pantalla(void *arg) {
+    int *status = (int *)arg;
+    struct timespec ts;
+    ts.tv_sec = 0;
+    ts.tv_nsec = 500000000;
+
+    display_file = fopen("logs/display.log", "w");
+    fprintf(display_file, "Display Log\n");
+
+    while (*status == 1) {
+        int local_espera_este_oeste, local_espera_norte_sur, local_crossing_vehicle_id;
+        char local_crossing_dir[25];
+
+        pthread_mutex_lock(&display_state.display_mutex);
+        local_espera_este_oeste = display_state.espera_este_oeste;
+        local_espera_norte_sur = display_state.espera_norte_sur;
+        local_crossing_vehicle_id = display_state.crossing_vehicle_id;
+        strcpy(local_crossing_dir, display_state.crossing_dir);
+        pthread_mutex_unlock(&display_state.display_mutex);
+
+        // Clear and redraw the layout
+        clear();
+        mvprintw(0, 10, "==== trafico interseccion simulacion ====");
+        mvprintw(2, 5, "este-oeste cola: %d", local_espera_este_oeste);
+        mvprintw(3, 5, "norte-sur cola: %d", local_espera_norte_sur);
+
+        if (local_crossing_vehicle_id != -1) {
+            mvprintw(5, 5, "Vehicle %d is crossing (%s).",
+                     local_crossing_vehicle_id, local_crossing_dir);
+        } else {
+            mvprintw(5, 5, "No vehicle currently crossing.");
+        }
+
+        char* timestamp = time_now_ns();
+        fprintf(display_file, "[%s] e/o: %d | n/s: %d\n", timestamp, local_espera_este_oeste, local_espera_norte_sur);
+        free(timestamp);
+        refresh();
+        nanosleep(&ts, NULL);
+        //sleep(1);
+    }
+
+    fclose(display_file);
+    // exiting gracefully
+    pthread_exit(0);
+}
+
+
 
 void *vehiculo_en_marcha(void *arg) {
     // usando la estructura vehiculo, se pasan los parametros para saber en que via y a cual direccion va
@@ -129,7 +146,6 @@ void *vehiculo_en_marcha(void *arg) {
     coche_para_cola->via = ((vehiculo *) arg)->via;
 
     // agregar a cola correspondiente
-
     if (coche_para_cola->via == este_oeste) {
         agregar(&espera_este_oeste, coche_para_cola);
         pthread_mutex_lock(&mutex_este_oeste);
@@ -137,24 +153,22 @@ void *vehiculo_en_marcha(void *arg) {
         if (debug) {
             printf("cola este-oeste: %d\n", n_este_oeste);
         }
-
+        pthread_mutex_unlock(&mutex_este_oeste);
 
         pthread_mutex_lock(&display_state.display_mutex);
-        display_state.espera_este_oeste = n_este_oeste;
-        pthread_mutex_unlock(&mutex_este_oeste);
+        display_state.espera_este_oeste++;
         pthread_mutex_unlock(&display_state.display_mutex);
     } else if (coche_para_cola->via == norte_sur) {
         agregar(&espera_norte_sur, coche_para_cola);
         pthread_mutex_lock(&mutex_norte_sur);
         n_norte_sur++;
-
-        pthread_mutex_lock(&display_state.display_mutex);
         if (debug) {
             printf("cola norte-sur: %d\n", n_norte_sur);
         }
-
-        display_state.espera_norte_sur = n_norte_sur;
         pthread_mutex_unlock(&mutex_norte_sur);
+
+        pthread_mutex_lock(&display_state.display_mutex);
+        display_state.espera_norte_sur++;
         pthread_mutex_unlock(&display_state.display_mutex);
     }
 
@@ -177,10 +191,6 @@ void *vehiculo_en_marcha(void *arg) {
             printf("cola este-oeste: %d\n", n_este_oeste);
         }
 
-        pthread_mutex_lock(&display_state.display_mutex);
-        display_state.espera_este_oeste = n_este_oeste;
-        pthread_mutex_unlock(&display_state.display_mutex);
-
         if (!coche->derecha) {
             pthread_mutex_lock(&mutex_turno);
             turno_este_oeste = false;
@@ -198,10 +208,6 @@ void *vehiculo_en_marcha(void *arg) {
         if (debug) {
             printf("cola norte-sur: %d\n", n_norte_sur);
         }
-
-        pthread_mutex_lock(&display_state.display_mutex);
-        display_state.espera_norte_sur = espera_norte_sur.tamano;
-        pthread_mutex_unlock(&display_state.display_mutex);
 
         pthread_mutex_lock(&mutex_turno);
         turno_este_oeste = true;
@@ -222,10 +228,6 @@ void *vehiculo_en_marcha(void *arg) {
         if (debug) {
             printf("cola este-oeste: %d\n", n_este_oeste);
         }
-
-        pthread_mutex_lock(&display_state.display_mutex);
-        display_state.espera_este_oeste = espera_este_oeste.tamano;
-        pthread_mutex_unlock(&display_state.display_mutex);
 
         if (!coche->derecha) {
             pthread_mutex_lock(&mutex_turno);
@@ -248,6 +250,24 @@ void *vehiculo_en_marcha(void *arg) {
     // concludiendo, siempre algun vehiculo esta elegido para pasar la interseccion
 
     if (coche != NULL) {
+
+        // la logica funciona, pero para mostrar realmente cuantos aun estan esperando en el semaforo
+        // para recibir el paso por el sem_wait necesito otra lista de espera que son los activos
+        // que ya se sacaron de la lista de espera de llegada y son los proximos en pasar
+        // en caso de que este disponible
+        // el contador n_este_oeste / n_norte_sur es importante para saber cuantos aun
+        // quieren pasar de los agregados a la cola a un hilo para pasar la interseccion, pero
+        // los contadores no son sincronos con los vehiculos pasando por la interseccion
+
+        // lo que esta pasando es que se asignan los coches de la lista de espera a un hilo
+        // y justo en este momento es van de la lista de espera, pero realmente en este estado activo
+        // que hayan sido elegido de un hilo para pasar la interseccion todavia esperan a su paso
+        // por el semaforo, osea de las dos colas para ambos vias, los vehiculos son asignados a un hilo
+        // y pasan a ser activo en la espera al paso
+        // de hecho las dos colas de ambas vias se juntan a una cola activa para el paso
+        // que en este momento sin esa cola activa no esta representado resultando en ese comportamiento
+        // asincrono
+
         if (coche->via == este_oeste && coche->derecha) {
             // en case de la via este-oeste que el vehicula gira a la derecha, no tiene que esperar al paso a la interseccion
             sleep(1); // tiempo para girar a derecha
@@ -257,6 +277,7 @@ void *vehiculo_en_marcha(void *arg) {
             pthread_mutex_lock(&display_state.display_mutex);
             display_state.crossing_vehicle_id = coche->id;
             strcpy(display_state.crossing_dir, "girando a la derecha hacia norte");
+            display_state.espera_este_oeste--;
             pthread_mutex_unlock(&display_state.display_mutex);
 
             fprintf(log_file, "[%s] Vehiculo %d del %s gira al norte.\n",
@@ -271,6 +292,12 @@ void *vehiculo_en_marcha(void *arg) {
         pthread_mutex_lock(&display_state.display_mutex);
         display_state.crossing_vehicle_id = coche->id;
         strcpy(display_state.crossing_dir, coche->via == este_oeste ? "este-oeste" : "norte-sur");
+        if (coche->via == este_oeste) {
+            display_state.espera_este_oeste--;
+        }
+        else {
+            display_state.espera_norte_sur--;
+        }
         pthread_mutex_unlock(&display_state.display_mutex);
         sleep(2); // tiempo para cruzar
         sem_post(&sem);
@@ -299,7 +326,8 @@ int main(int argc, char **argv) {
     struct timespec req, rem;
     req.tv_sec = 0;
     req.tv_nsec = 100000000;
-    // comprobar si cadena es entero: https://www.geeksforgeeks.org/check-given-string-valid-number-integer-floating-point/
+    // comprobar si cadena es entero:
+    // https://www.geeksforgeeks.org/check-given-string-valid-number-integer-floating-point/
     if (argc == 3 && !(!is_valid_integer(argv[1]) || argv[2] == "-v")) {
         printf("se usa output verbose para debugging\n");
         debug = true;
@@ -370,22 +398,24 @@ int main(int argc, char **argv) {
             contador_este_norte++;
         }
 
-        if (debug && coche != NULL) {
+        if (coche != NULL) {
             // crear hilo pasando el coche correspondiente
             pthread_create(&hilos[next_id - 1], NULL, vehiculo_en_marcha, coche);
-            vias type = coche->via;
-            if (type == 0) {
-                printf("    vehiculo en via norte-sur creado\n");
-            } else if (type == 1) {
-                if (!coche->derecha) {
-                    printf("    vehiculo en via este-oeste creado (siuge derecho)\n");
-                } else {
-                    printf("    vehiculo en via este-oeste creado (gira a la derecha)\n");
+            if (debug) {
+                vias type = coche->via;
+                if (type == 0) {
+                    printf("    vehiculo en via norte-sur creado\n");
+                } else if (type == 1) {
+                    if (!coche->derecha) {
+                        printf("    vehiculo en via este-oeste creado (siuge derecho)\n");
+                    } else {
+                        printf("    vehiculo en via este-oeste creado (gira a la derecha)\n");
+                    }
                 }
             }
         }
 
-        if (contador > 25) {
+        if (contador > 40) {
             // simular solamente 100 ciclos primero
             status = 0;
         }
