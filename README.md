@@ -1,5 +1,8 @@
 # Project Overview
 This project models a road intersection using threads as vehicle representations to synchronize the crossing of an east-west and north-south lane.
+
+![image](https://github.com/user-attachments/assets/f09a2fae-d5eb-47a0-aab3-84ec1a8eafea)
+
 # Project Structure
 
 ```plaintext
