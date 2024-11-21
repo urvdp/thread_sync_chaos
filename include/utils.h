@@ -20,6 +20,9 @@
 
 char *time_now_ns();
 
+char *time_now();
+struct tm *time_now_obj();
+
 bool is_valid_integer(const char *str);
 
 #endif //UTILS_H

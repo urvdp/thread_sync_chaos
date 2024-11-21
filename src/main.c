@@ -183,7 +183,7 @@ void *vehiculo_en_marcha(void *arg) {
             display_state.espera_este_oeste--;
             pthread_mutex_unlock(&display_state.display_mutex);
 
-            char* timecheck = time_now_ns();
+            char *timecheck = time_now_ns();
             fprintf(log_file, "[%s] Vehiculo %d del %s gira al norte.\n",
                     timecheck, coche->id, coche->via == este_oeste ? "este-oeste" : "norte-sur");
             free(timecheck);
@@ -192,7 +192,7 @@ void *vehiculo_en_marcha(void *arg) {
         }
 
         sem_wait(&sem);
-        char* timecheck = time_now_ns();
+        char *timecheck = time_now_ns();
         fprintf(log_file, "[%s] Vehiculo %d del %s esta pasando.\n",
                 timecheck, coche->id, coche->via == este_oeste ? "este-oeste" : "norte-sur");
         free(timecheck);
@@ -208,7 +208,7 @@ void *vehiculo_en_marcha(void *arg) {
         sleep(3); // tiempo para cruzar
         sem_post(&sem);
 
-        char* timestamp = time_now_ns();
+        char *timestamp = time_now_ns();
         fprintf(log_file, "[%s] Vehiculo %d del %s se fue de la interseccion.\n",
                 timestamp, coche->id, coche->via == este_oeste ? "este-oeste" : "norte-sur");
         free(timestamp);
@@ -232,7 +232,7 @@ void *vehiculo_en_marcha(void *arg) {
 int main(int argc, char **argv) {
     struct timespec req, rem;
     req.tv_sec = 0;
-    req.tv_nsec = 100000000;
+    req.tv_nsec = 200000000;
     // comprobar si cadena es entero:
     // https://www.geeksforgeeks.org/check-given-string-valid-number-integer-floating-point/
     if (argc == 3 && !(!is_valid_integer(argv[1]) || (!strcmp(argv[2], "-v") == 0))) {
@@ -279,6 +279,7 @@ int main(int argc, char **argv) {
     int contador_este_norte = 0;
     int contador_este_oeste = 0;
     int contador_norte_sur = 0;
+    time_t time_init = time(NULL);
     while (status == 1) {
         contador++;
 
@@ -321,9 +322,7 @@ int main(int argc, char **argv) {
                 }
             }
         }
-
-        if (contador > 40) {
-            // simular solamente 100 ciclos primero
+        if (contador > 20) {
             status = 0;
         }
         nanosleep(&req, &rem);
@@ -370,7 +369,7 @@ int main(int argc, char **argv) {
         free(exit_status);
         free(timestamp);
     }
-
+    time_t time_sim_end = time(NULL);
 
     fprintf(log_file, "Debug message\n");
     fprintf(log_file, "este-oeste: %d\n", contador_este_oeste);
@@ -395,5 +394,17 @@ int main(int argc, char **argv) {
         reset_pantalla();
     }
 
+    // dar unas estadisticas al usuario
+    long time_delta_s = (long) (time_sim_end - time_init);
+    long time_delta_min = time_delta_s / 60;
+    time_delta_s = time_delta_s % 60;
+    printf("==== Estadistica de simulacion con %d vehiculos ====\n", NUM_VEHICULOS);
+    printf("     vehiculos  norte-sur total: %d\n", contador_norte_sur);
+    printf("     vehiculos este-oeste total: %d\n", contador_este_norte + contador_este_oeste);
+    printf("                           ->  derecho: %d \n", contador_este_oeste);
+    printf("                           ->  girando: %d\n", contador_este_norte);
+    printf("     -------------------------------------\n");
+    printf("     vehiculos            total: %d\n", contador_este_norte + contador_este_oeste + contador_norte_sur);
+    printf("     tiempo total de simulacion: %ld:%ld min\n", time_delta_min, time_delta_s);
     return 0;
 }
