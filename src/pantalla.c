@@ -16,6 +16,14 @@ DisplayState display_state = {
 
 void init_pantalla(void) {
     initscr();
+
+    if (!has_colors()) {
+        reset_pantalla();
+        fprintf(stderr, "Error: Your terminal does not support colors.\n");
+        exit(EXIT_FAILURE); // Terminate the program safely
+    }
+
+    start_color(); // include color support
     cbreak();
     noecho();
     curs_set(0);
@@ -79,20 +87,20 @@ void *mostrar_en_pantalla(void *arg) {
 
         int row_offset = 2;
         if (local_crossing_vehicle_id != -1) {
-            mvprintw(row_offset + 8, offset, "Vehicle %d is crossing (%s).",
+            mvprintw(row_offset + 9, offset, "Vehicle %d is crossing (%s).",
                      local_crossing_vehicle_id, local_crossing_dir);
         } else {
-            mvprintw(row_offset + 8, offset, "No vehicle currently crossing.");
+            mvprintw(row_offset + 9, offset, "No vehicle currently crossing.");
         }
 
         // display intersection
 
         // static section
         mvprintw(row_offset - 1, offset + 12, "norte");
-        mvprintw(row_offset + 6, offset + 21, "sur");
-        mvprintw(row_offset + 6, offset, "oeste");
-        mvprintw(row_offset + 6, offset + 41, "este");
-        for (int i = row_offset; i < (row_offset + 3); i++) {
+        mvprintw(row_offset + 7, offset + 21, "sur");
+        mvprintw(row_offset + 7, offset, "oeste");
+        mvprintw(row_offset + 7, offset + 41, "este");
+        for (int i = row_offset; i < (row_offset + 4); i++) {
             for (int j = 0; j < 18; j += 2) {
                 mvprintw(i, offset + j, "#");
             }
@@ -106,7 +114,7 @@ void *mostrar_en_pantalla(void *arg) {
         }
 
         for (int j = 0; j < 46; j += 2) {
-            mvprintw(row_offset + 5, offset + j, "#");
+            mvprintw(row_offset + 6, offset + j, "#");
         }
 
         // dynamic section
@@ -115,7 +123,7 @@ void *mostrar_en_pantalla(void *arg) {
 
         // vehiculos en esperando en via este-oeste
         int east_west_col = 28;
-        int east_west_row = row_offset + 4;
+        int east_west_row = row_offset + 5;
 
         int n_este_oeste = local_espera_este_oeste;
         if (n_este_oeste + offset + east_west_col > cols) {
@@ -127,11 +135,11 @@ void *mostrar_en_pantalla(void *arg) {
 
         // vehiculos esperando en via norte-sur
         int north_south_col = 19;
-        int north_south_row = row_offset + 3;
+        int north_south_row = row_offset + 4;
 
         int n_norte_sur = local_espera_norte_sur;
-        if (n_norte_sur > 5) {
-            n_norte_sur = 5;
+        if (n_norte_sur > 6) {
+            n_norte_sur = 6;
         }
 
         for (int k = n_norte_sur; k > 0; k--) {
