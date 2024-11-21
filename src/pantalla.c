@@ -39,6 +39,7 @@ void *mostrar_en_pantalla(void *arg) {
     // get max terminal height and width
     int rows, cols;
     getmaxyx(stdscr, rows, cols);
+    fprintf(display_file, "configuracion terminal - rows: %d cols: %d\n", rows, cols);
 
     int buffer_este_oeste[BUFFER_SIZE];
     int buffer_norte_sur[BUFFER_SIZE];
