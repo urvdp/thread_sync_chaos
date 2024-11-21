@@ -3,6 +3,17 @@ This project models a road intersection using threads as vehicle representations
 
 ![image](https://github.com/user-attachments/assets/f09a2fae-d5eb-47a0-aab3-84ec1a8eafea)
 
+## Build Instructions
+
+To build the project, ensure you create the `build` directory before running `make`:
+
+```bash
+mkdir build
+make
+```
+
+
+
 # Project Structure
 
 ```plaintext
