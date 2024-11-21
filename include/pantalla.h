@@ -11,6 +11,10 @@
 
 #define BUFFER_SIZE 3
 
+#define COL_RED 1
+#define COL_BLUE 2
+#define COL_CYAN 3
+
 #include <stdlib.h>
 #include <ncurses.h>
 #include <pthread.h>

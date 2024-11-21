@@ -23,10 +23,15 @@ void init_pantalla(void) {
         exit(EXIT_FAILURE); // Terminate the program safely
     }
 
-    start_color(); // include color support
+    start_color(); // include color support, aragorn supports colors (I tried it)
     cbreak();
     noecho();
     curs_set(0);
+
+    // init some colors for cars
+    init_pair(COL_RED, COLOR_RED, COLOR_BLACK); // este-oeste derecho
+    init_pair(COL_BLUE, COLOR_BLUE, COLOR_BLACK); // norte-sur
+    init_pair(COL_CYAN, COLOR_CYAN, COLOR_BLACK); // este-oeste derecha
 }
 
 void reset_pantalla(void) {
@@ -37,7 +42,7 @@ void *mostrar_en_pantalla(void *arg) {
     int *status = (int *) arg;
     struct timespec ts;
     ts.tv_sec = 0;
-    ts.tv_nsec = 400000000;
+    ts.tv_nsec = 500000000;
 
     int offset = 28;
 
@@ -80,10 +85,15 @@ void *mostrar_en_pantalla(void *arg) {
 
         // Clear and redraw the layout
         clear();
+        attrset(A_NORMAL); // usar texto en default
+        attron(A_BOLD);
         mvprintw(0, 5, "==== simulacion de interseccion de trafico ====");
+        attroff(A_BOLD);
+        attron(COLOR_PAIR(COL_RED));
         mvprintw(2, 5, "este-oeste cola: %d", local_espera_este_oeste);
+        attron(COLOR_PAIR(COL_BLUE));
         mvprintw(4, 5, "norte-sur cola: %d", local_espera_norte_sur);
-        //mvprintw(3, 5, "rows: %d cols: %d", rows, cols);
+        attroff(COLOR_PAIR(COL_BLUE));
 
         int row_offset = 2;
         if (local_crossing_vehicle_id != -1) {
@@ -129,6 +139,7 @@ void *mostrar_en_pantalla(void *arg) {
         if (n_este_oeste + offset + east_west_col > cols) {
             n_este_oeste = cols - offset - east_west_col;
         }
+        attron(COLOR_PAIR(COL_RED));
         for (int k = 0; k < n_este_oeste; k++) {
             mvprintw(east_west_row, offset + east_west_col + (k * vehicle_spacing), "o");
         }
@@ -141,16 +152,16 @@ void *mostrar_en_pantalla(void *arg) {
         if (n_norte_sur > 6) {
             n_norte_sur = 6;
         }
-
+        attron(COLOR_PAIR(COL_BLUE));
         for (int k = n_norte_sur; k > 0; k--) {
             mvprintw(north_south_row - k, offset + north_south_col, "o");
         }
-
+        attroff(COLOR_PAIR(COL_BLUE));
         // procesamiento de cruce
         if (reset && local_crossing_vehicle_id != -1) {
             // hay un vehiculo cruzando la interseccion, trigger la ejecucion de mostrarlo en pantalla
             // este-oeste o norte-sur -> 2s, girar al norte -> 1s
-            // tiempo de actualizacion: 0.5s
+            // tiempo de actualizacion: 0.4s
             // -1 significa que buffer esta vacio y se puede asignar vehiculo
             if (strcmp("este-oeste", local_crossing_dir) == 0) {
                 // vehiculo pasa del este al oeste
@@ -188,6 +199,7 @@ void *mostrar_en_pantalla(void *arg) {
         for (int k = 0; k < BUFFER_SIZE; k++) {
             int estado_este_oeste = buffer_este_oeste[k];
             if (estado_este_oeste != -1) {
+                attron(COLOR_PAIR(COL_RED));
                 mvprintw(east_west_row, offset + east_west_col - step_size - step_size * estado_este_oeste, "o");
                 buffer_este_oeste[k]++;
                 if (estado_este_oeste == max_proc) {
@@ -201,15 +213,17 @@ void *mostrar_en_pantalla(void *arg) {
                 fprintf(display_file, "[%s] n/s-buffer k %d | status: %d\n", timestamp, k, estado_norte_sur);
                 free(timestamp);
                 // manejando al oeste
+                attron(COLOR_PAIR(COL_BLUE));
                 mvprintw(north_south_row + 1, offset + north_south_col - step_size * estado_norte_sur, "o");
                 buffer_norte_sur[k]++;
-                if (estado_norte_sur == max_proc-1) {
+                if (estado_norte_sur == max_proc - 1) {
                     buffer_norte_sur[k] = -1;
                 }
             }
             int estado_gira = buffer_girando[k];
             if (estado_gira != -1) {
                 // haciendo la gira a la derecha al norte
+                attron(COLOR_PAIR(COL_CYAN));
                 if (estado_gira == 0) {
                     mvprintw(east_west_row, offset + east_west_col - 3, "o");
                     buffer_girando[k]++;
