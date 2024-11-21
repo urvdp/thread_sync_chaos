@@ -1,19 +1,6 @@
 Thread Exit Log
-[2024-11-20 00:03:05.322332970] Thread 0 terminated with no status
-[2024-11-20 00:03:05.322373406] Thread 1 terminated with no status
-[2024-11-20 00:03:06.714677775] Thread 2 terminated with no status
-[2024-11-20 00:03:08.715006182] Thread 3 terminated with no status
-[2024-11-20 00:03:10.715273194] Thread 4 terminated with no status
-[2024-11-20 00:03:12.715599282] Thread 5 terminated with no status
-[2024-11-20 00:03:14.715674715] Thread 6 terminated with no status
-[2024-11-20 00:03:14.715885043] Thread 7 terminated with no status
-[2024-11-20 00:03:16.715960007] Thread 8 terminated with no status
-[2024-11-20 00:03:18.716187070] Thread 9 terminated with no status
-[2024-11-20 00:03:20.716370239] Thread 10 terminated with no status
-[2024-11-20 00:03:22.716575640] Thread 11 terminated with no status
-[2024-11-20 00:03:24.716899646] Thread 12 terminated with no status
-[2024-11-20 00:03:26.717123984] Thread 13 terminated with no status
-[2024-11-20 00:03:28.717258339] Thread 14 terminated with no status
-[2024-11-20 00:03:30.717467677] Thread 15 terminated with no status
-[2024-11-20 00:03:32.717745278] Thread 16 terminated with no status
-[2024-11-20 00:03:32.824064786] Display thread terminated
+[2024-11-21 11:14:13.180419066] Thread 0 terminated with no status
+[2024-11-21 11:14:13.572424612] Thread 1 terminated with no status
+[2024-11-21 11:14:16.572626174] Thread 2 terminated with no status
+[2024-11-21 11:14:19.572900298] Thread 3 terminated with no status
+[2024-11-21 11:14:22.573444030] Thread 4 terminated with no status
