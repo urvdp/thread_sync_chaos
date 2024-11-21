@@ -1,9 +1,7 @@
 /.idea
 /cmake-build-debug
-main.o
-cola.o
-semaforo
-vehiculo.o
+/build/*
+!/build/.*
 CMakeCache.txt
 CMakeFiles
 .cmake
