@@ -97,10 +97,10 @@ void *mostrar_en_pantalla(void *arg) {
 
         int row_offset = 2;
         if (local_crossing_vehicle_id != -1) {
-            mvprintw(row_offset + 9, offset, "Vehicle %d is crossing (%s).",
+            mvprintw(row_offset + 9, offset, "vehiculo %d esta cruzando (%s).",
                      local_crossing_vehicle_id, local_crossing_dir);
         } else {
-            mvprintw(row_offset + 9, offset, "No vehicle currently crossing.");
+            mvprintw(row_offset + 9, offset, "ningung vehiculo cruzando actualmente.");
         }
 
         // display intersection
