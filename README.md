@@ -40,3 +40,14 @@ project/
 ├── CMakeLists.txt      # Build system (if using CMake)
 ├── Makefile            # Build system (if using Make)
 └── README.md           # Project documentation
+```
+
+## Additional Commands
+
+github undo local commit
+```bash
+git reset --soft HEAD~1
+```
+- `--soft`: last commit undone, keeps the changes staged for commit
+- `--mixed`: last commit undone, moves changes back to the working directory
+- `--hard`: last commit undone, all changes associated to it discarded
