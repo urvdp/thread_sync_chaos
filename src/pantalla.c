@@ -26,7 +26,7 @@ void reset_pantalla(void) {
 }
 
 void *mostrar_en_pantalla(void *arg) {
-    int *status = (int *)arg;
+    int *status = (int *) arg;
     struct timespec ts;
     ts.tv_sec = 0;
     ts.tv_nsec = 400000000;
@@ -51,11 +51,16 @@ void *mostrar_en_pantalla(void *arg) {
     }
 
     const int max_proc = 7;
+    bool reset = true;
 
     int local_espera_este_oeste, local_espera_norte_sur = 0;
     int local_crossing_vehicle_id = -1;
     char local_crossing_dir[25];
     while (*status == 1) {
+        // controlar si hay nuevo vehiculo en la interseccion
+        if (local_crossing_vehicle_id != -1 && display_state.crossing_vehicle_id != local_crossing_vehicle_id) {
+            reset = true;
+        }
 
         pthread_mutex_lock(&display_state.display_mutex);
         local_espera_este_oeste = display_state.espera_este_oeste;
@@ -73,38 +78,39 @@ void *mostrar_en_pantalla(void *arg) {
 
         int row_offset = 2;
         if (local_crossing_vehicle_id != -1) {
-            mvprintw(row_offset+8, offset, "Vehicle %d is crossing (%s).",
+            mvprintw(row_offset + 8, offset, "Vehicle %d is crossing (%s).",
                      local_crossing_vehicle_id, local_crossing_dir);
         } else {
-            mvprintw(row_offset+8, offset, "No vehicle currently crossing.");
+            mvprintw(row_offset + 8, offset, "No vehicle currently crossing.");
         }
 
         // display intersection
 
         // static section
-        mvprintw(row_offset-1, offset + 12, "norte");
-        mvprintw(row_offset+6, offset + 21, "sur");
-        mvprintw(row_offset+6, offset, "oeste");
-        mvprintw(row_offset+6, offset + 41, "este");
+        mvprintw(row_offset - 1, offset + 12, "norte");
+        mvprintw(row_offset + 6, offset + 21, "sur");
+        mvprintw(row_offset + 6, offset, "oeste");
+        mvprintw(row_offset + 6, offset + 41, "este");
         for (int i = row_offset; i < (row_offset + 3); i++) {
-            for (int j = 0; j < 18; j+=2) {
-                    mvprintw(i, offset + j, "#");
+            for (int j = 0; j < 18; j += 2) {
+                mvprintw(i, offset + j, "#");
             }
             // leave 5 spaces
             if (i % 2 != 0) {
                 mvprintw(i, offset + 18 + 4, "|");
             }
-            for (int j = 0; j < 18; j+=2) {
+            for (int j = 0; j < 18; j += 2) {
                 mvprintw(i, offset + 18 + 10 + j, "#");
             }
         }
 
-        for (int j = 0; j < 46; j+=2) {
+        for (int j = 0; j < 46; j += 2) {
             mvprintw(row_offset + 5, offset + j, "#");
         }
 
         // dynamic section
-        int vehicle_spacing = 2;
+        const int vehicle_spacing = 2;
+        const int step_size = 3;
 
         // vehiculos en esperando en via este-oeste
         int east_west_col = 28;
@@ -127,12 +133,12 @@ void *mostrar_en_pantalla(void *arg) {
             n_norte_sur = 5;
         }
 
-        for (int k=n_norte_sur; k > 0; k--) {
+        for (int k = n_norte_sur; k > 0; k--) {
             mvprintw(north_south_row - k, offset + north_south_col, "o");
         }
 
         // procesamiento de cruce
-        if (local_crossing_vehicle_id != -1) {
+        if (reset && local_crossing_vehicle_id != -1) {
             // hay un vehiculo cruzando la interseccion, trigger la ejecucion de mostrarlo en pantalla
             // este-oeste o norte-sur -> 2s, girar al norte -> 1s
             // tiempo de actualizacion: 0.5s
@@ -142,6 +148,7 @@ void *mostrar_en_pantalla(void *arg) {
                 for (int k = 0; k < BUFFER_SIZE; k++) {
                     if (buffer_este_oeste[k] == -1) {
                         buffer_este_oeste[k] = 0;
+                        break;
                     }
                 }
             } else if (strcmp("norte-sur", local_crossing_dir) == 0) {
@@ -149,6 +156,10 @@ void *mostrar_en_pantalla(void *arg) {
                 for (int k = 0; k < BUFFER_SIZE; k++) {
                     if (buffer_norte_sur[k] == -1) {
                         buffer_norte_sur[k] = 0;
+                        char *timestamp = time_now_ns();
+                        fprintf(display_file, "[%s] added n/s at k %d\n", timestamp, k);
+                        free(timestamp);
+                        break;
                     }
                 }
             } else if (strcmp("girando a la derecha", local_crossing_dir) == 0) {
@@ -156,9 +167,11 @@ void *mostrar_en_pantalla(void *arg) {
                 for (int k = 0; k < BUFFER_SIZE; k++) {
                     if (buffer_girando[k] == -1) {
                         buffer_girando[k] = 0;
+                        break;
                     }
                 }
             }
+            reset = false;
         }
 
 
@@ -166,7 +179,7 @@ void *mostrar_en_pantalla(void *arg) {
         for (int k = 0; k < BUFFER_SIZE; k++) {
             int estado_este_oeste = buffer_este_oeste[k];
             if (estado_este_oeste != -1) {
-                mvprintw(east_west_row, offset + east_west_col - 4 - 4 * estado_este_oeste, "o");
+                mvprintw(east_west_row, offset + east_west_col - step_size - step_size * estado_este_oeste, "o");
                 buffer_este_oeste[k]++;
                 if (estado_este_oeste == max_proc) {
                     // reset buffer
@@ -175,17 +188,14 @@ void *mostrar_en_pantalla(void *arg) {
             }
             int estado_norte_sur = buffer_norte_sur[k];
             if (estado_norte_sur != -1) {
-                if (estado_norte_sur == 0) {
-                    // pasando al cruze
-                    mvprintw(north_south_row+1, offset + north_south_col, "o");
-                    buffer_norte_sur[k]++;
-                } else {
-                    // manejando al oeste
-                    mvprintw(north_south_row+1, offset + north_south_col - 4 - 4 * (estado_este_oeste-1), "o");
-                    buffer_norte_sur[k]++;
-                    if (estado_norte_sur == max_proc) {
-                        buffer_norte_sur[k] = -1;
-                    }
+                char *timestamp = time_now_ns();
+                fprintf(display_file, "[%s] n/s-buffer k %d | status: %d\n", timestamp, k, estado_norte_sur);
+                free(timestamp);
+                // manejando al oeste
+                mvprintw(north_south_row + 1, offset + north_south_col - step_size * estado_norte_sur, "o");
+                buffer_norte_sur[k]++;
+                if (estado_norte_sur == max_proc-1) {
+                    buffer_norte_sur[k] = -1;
                 }
             }
             int estado_gira = buffer_girando[k];
@@ -194,8 +204,7 @@ void *mostrar_en_pantalla(void *arg) {
                 if (estado_gira == 0) {
                     mvprintw(east_west_row, offset + east_west_col - 3, "o");
                     buffer_girando[k]++;
-                }
-                else {
+                } else {
                     mvprintw(east_west_row - estado_gira, offset + east_west_col - 3, "o");
                     buffer_girando[k]++;
                     if (estado_gira == max_proc) {
@@ -205,7 +214,7 @@ void *mostrar_en_pantalla(void *arg) {
             }
         }
 
-        char* timestamp = time_now_ns();
+        char *timestamp = time_now_ns();
         fprintf(display_file, "[%s] e/o: %d | n/s: %d\n", timestamp, local_espera_este_oeste, local_espera_norte_sur);
         free(timestamp);
         refresh();
