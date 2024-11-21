@@ -2,10 +2,12 @@
 // Created by jan on 19.11.24.
 //
 
+#ifndef _POSIX_C_SOURCE
+#define _POSIX_C_SOURCE 200112L
+#endif
+
 #ifndef UTILS_H
 #define UTILS_H
-
-#define _POSIX_C_SOURCE 199309L
 
 #include <stdio.h>
 #include <stdlib.h>

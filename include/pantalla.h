@@ -2,11 +2,13 @@
 // Desplegue en pantalla usando ncurses
 //
 
+#ifndef _POSIX_C_SOURCE
+#define _POSIX_C_SOURCE 200112L
+#endif
 
 #ifndef PANTALLA_H
 #define PANTALLA_H
 
-#define _POSIX_C_SOURCE 200112L
 #define BUFFER_SIZE 3
 
 #include <stdlib.h>
