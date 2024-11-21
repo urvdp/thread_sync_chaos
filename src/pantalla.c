@@ -4,17 +4,24 @@
 
 #include "pantalla.h"
 
+static int* user_exit;
+
 FILE *display_file = NULL;
+int n_vehicles = 0;
 
 DisplayState display_state = {
     .espera_este_oeste = 0,
     .espera_norte_sur = 0,
     .crossing_vehicle_id = -1,
+    .vehicles_arrived = 0,
     .crossing_dir = "",
     .display_mutex = PTHREAD_MUTEX_INITIALIZER
 };
 
-void init_pantalla(void) {
+void init_pantalla(int n_vehiculos, int* user_exit_state) {
+    n_vehicles = n_vehiculos;
+    user_exit = user_exit_state;
+    *user_exit = 0; // se cambia a 1 cuando se presiona q para cancelar generacion de vehiculos
     initscr();
 
     if (!has_colors()) {
@@ -24,6 +31,7 @@ void init_pantalla(void) {
     }
 
     start_color(); // include color support, aragorn supports colors (I tried it)
+    nodelay(stdscr, TRUE); // enable non blocking user input (e.g. used here to quit)
     cbreak();
     noecho();
     curs_set(0);
@@ -68,6 +76,7 @@ void *mostrar_en_pantalla(void *arg) {
     bool reset = true;
 
     int local_espera_este_oeste, local_espera_norte_sur = 0;
+    int local_vehicles_arrived = 0;
     int local_crossing_vehicle_id = -1;
     char local_crossing_dir[25];
     while (*status == 1) {
@@ -76,9 +85,11 @@ void *mostrar_en_pantalla(void *arg) {
             reset = true;
         }
 
+        // actualizar valores dinamicas
         pthread_mutex_lock(&display_state.display_mutex);
         local_espera_este_oeste = display_state.espera_este_oeste;
         local_espera_norte_sur = display_state.espera_norte_sur;
+        local_vehicles_arrived = display_state.vehicles_arrived;
         local_crossing_vehicle_id = display_state.crossing_vehicle_id;
         strcpy(local_crossing_dir, display_state.crossing_dir);
         pthread_mutex_unlock(&display_state.display_mutex);
@@ -87,20 +98,34 @@ void *mostrar_en_pantalla(void *arg) {
         clear();
         attrset(A_NORMAL); // usar texto en default
         attron(A_BOLD);
-        mvprintw(0, 5, "==== simulacion de interseccion de trafico ====");
+        mvprintw(0, 5, "==== simulacion de interseccion de trafico (n=%d)====", n_vehicles);
         attroff(A_BOLD);
         attron(COLOR_PAIR(COL_RED));
         mvprintw(2, 5, "este-oeste cola: %d", local_espera_este_oeste);
         attron(COLOR_PAIR(COL_BLUE));
         mvprintw(4, 5, "norte-sur cola: %d", local_espera_norte_sur);
         attroff(COLOR_PAIR(COL_BLUE));
+        mvprintw(8, 5, "vehiculos llegados:");
+        mvprintw(9, 5, "%d / %d", local_vehicles_arrived, n_vehicles);
+        if (*user_exit != 1 && local_vehicles_arrived < n_vehicles) {
+            mvprintw(10, 5, "[q] dejar de generar");
+            mvprintw(11, 9, "vehiculos");
+        } else {
+            mvprintw(10, 5, "se cancelo generacion");
+            mvprintw(11, 5, "de vehiculos");
+        }
+        int input = getch();
+        if (*user_exit != 1 && input != ERR && input == (int) USER_EXIT) {
+            mvprintw(12, 6, "%c detectado", input);
+            *user_exit = 1;
+        }
 
         int row_offset = 2;
         if (local_crossing_vehicle_id != -1) {
             mvprintw(row_offset + 9, offset, "vehiculo %d esta cruzando (%s).",
                      local_crossing_vehicle_id, local_crossing_dir);
         } else {
-            mvprintw(row_offset + 9, offset, "ningung vehiculo cruzando actualmente.");
+            mvprintw(row_offset + 9, offset, "ningun vehiculo cruzando actualmente.");
         }
 
         // display intersection

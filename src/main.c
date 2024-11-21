@@ -254,8 +254,9 @@ int main(int argc, char **argv) {
     rand_file = fopen("logs/rand.log", "w");
 
     // Inicializar ncurses
+    int user_exit_state;
     if (!debug) {
-        init_pantalla();
+        init_pantalla(NUM_VEHICULOS, &user_exit_state);
     }
 
     // inicializar semaforo para cruzar
@@ -321,9 +322,10 @@ int main(int argc, char **argv) {
                     }
                 }
             }
-        }
-        if (contador > 20) {
-            status = 0;
+            // actualizar contador de vehiculos llegados al cruce desde inicializaicon
+            pthread_mutex_lock(&display_state.display_mutex);
+            display_state.vehicles_arrived++;
+            pthread_mutex_unlock(&display_state.display_mutex);
         }
         nanosleep(&req, &rem);
         if (coche != NULL) {
@@ -336,7 +338,7 @@ int main(int argc, char **argv) {
             // el hilo maneja su propia copia de la memoria
             coche = NULL;
         }
-        if (next_id == NUM_VEHICULOS) {
+        if (next_id == NUM_VEHICULOS || user_exit_state == 1) {
             // si se excede el numero de sitios en el arreglo, se termina la llegada de vehiculos
             status = 0;
         }
