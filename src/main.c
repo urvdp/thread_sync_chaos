@@ -166,18 +166,19 @@ void *vehiculo_en_marcha(void *arg) {
         // el contador n_este_oeste / n_norte_sur es importante para saber cuantos aun
         // quieren pasar de los agregados a la cola a un hilo para pasar la interseccion, pero
         // los contadores no son sincronos con los vehiculos pasando por la interseccion
-
+        // explicacion comportamiento observado:
         // lo que esta pasando es que se asignan los vehiculos de la lista de espera a un hilo
         // y justo en este momento se van de la lista de espera, pero realmente en este estado activo
         // que hayan sido elegido de un hilo para pasar la interseccion todavia esperan a su paso
         // por el semaforo, osea de las dos colas para ambos vias, los vehiculos son asignados a un hilo
         // y pasan a ser activo en la espera al paso
         // de hecho las dos colas de ambas vias se juntan a una cola activa (con postulando sem_wait) para el paso
-        // que en este momento sin esa cola activa no esta representado resultando en ese comportamiento
-        // asincrono (cuando se llama sem_wait hasta que se yo, no necesariamente es una cola FIFO
+        // que en este momento sin esa cola activa no esta representado por n_este_oeste / n_nort_sur resultando
+        // en ese comportamiento asincrono
+        // cuando se llama sem_wait hasta que se yo, no necesariamente es una cola FIFO
         // que el primero que llamo sem_wait es el proximo en recibir el paso cuando el semaforo esta
         // disponible otra vez, eso depende de la implementacion del OS, pero de las pruebas que hice
-        // yo me parece que en esta implementacion el primero en llamar es el proximo en recibir el paso)
+        // yo me parece que en esta implementacion el primero en llamar es el proximo en recibir el paso
 
         // mas encima, los vehiculos que van a la derecha no tienen que esperar su paso por la interseccion
         // porque no se tienen que sincronizar con la via norte-sur como son independientes
@@ -197,6 +198,8 @@ void *vehiculo_en_marcha(void *arg) {
                     coche->derecha ? "girando" : "derecha");
             free(timestamp);
         } else if (local_n_s_contador > 1) {
+            // logica para evitar que la via n-s postule sem_wait muy seguido, mientras o-e esta
+            // esperando a recibir el primer-vehiculo-mutex
             pthread_mutex_lock(&mutex_n_s_block);
             sleep(1); // esperar para que n-s vehiculos no puedan entrar y preferir via o-e
             pthread_mutex_unlock(&mutex_n_s_block);
@@ -229,6 +232,7 @@ void *vehiculo_en_marcha(void *arg) {
             display_state.crossing_vehicle_id = coche->id;
             strcpy(display_state.crossing_dir, "girando a la derecha");
             display_state.espera_este_oeste--;
+            display_state.pasados_e_n++;
             pthread_mutex_unlock(&display_state.display_mutex);
 
             free(coche);
@@ -251,8 +255,10 @@ void *vehiculo_en_marcha(void *arg) {
         strcpy(display_state.crossing_dir, coche->via == este_oeste ? "este-oeste" : "norte-sur");
         if (coche->via == este_oeste) {
             display_state.espera_este_oeste--;
+            display_state.pasados_e_o++;
         } else {
             display_state.espera_norte_sur--;
+            display_state.pasados_n_s++;
         }
         pthread_mutex_unlock(&display_state.display_mutex);
         sleep(3); // tiempo para cruzar

@@ -29,6 +29,9 @@
 typedef struct {
     int espera_este_oeste;
     int espera_norte_sur;
+    int pasados_e_o;
+    int pasados_n_s;
+    int pasados_e_n;
     int crossing_vehicle_id; // ID del vehiculo en la interseccion en este momento (-1 si es ninguno)
     char crossing_dir[50]; // "norte-sur" o "este-oeste" o "girando a la derecha"
     pthread_mutex_t display_mutex; // mutex para proteger acceso a variables compartidas

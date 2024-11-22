@@ -12,6 +12,9 @@ int n_vehicles = 0;
 DisplayState display_state = {
     .espera_este_oeste = 0,
     .espera_norte_sur = 0,
+    .pasados_e_n = 0,
+    .pasados_e_o = 0,
+    .pasados_n_s = 0,
     .crossing_vehicle_id = -1,
     .vehicles_arrived = 0,
     .crossing_dir = "",
@@ -76,6 +79,7 @@ void *mostrar_en_pantalla(void *arg) {
     bool reset = true;
 
     int local_espera_este_oeste, local_espera_norte_sur = 0;
+    int local_pasados_e_o, local_pasados_n_s, local_pasados_e_n = 0;
     int local_vehicles_arrived = 0;
     int local_crossing_vehicle_id = -1;
     char local_crossing_dir[25];
@@ -89,6 +93,9 @@ void *mostrar_en_pantalla(void *arg) {
         pthread_mutex_lock(&display_state.display_mutex);
         local_espera_este_oeste = display_state.espera_este_oeste;
         local_espera_norte_sur = display_state.espera_norte_sur;
+        local_pasados_e_n = display_state.pasados_e_n;
+        local_pasados_e_o = display_state.pasados_e_o;
+        local_pasados_n_s = display_state.pasados_n_s;
         local_vehicles_arrived = display_state.vehicles_arrived;
         local_crossing_vehicle_id = display_state.crossing_vehicle_id;
         strcpy(local_crossing_dir, display_state.crossing_dir);
@@ -105,21 +112,35 @@ void *mostrar_en_pantalla(void *arg) {
         attron(COLOR_PAIR(COL_BLUE));
         mvprintw(4, 5, "norte-sur cola: %d", local_espera_norte_sur);
         attroff(COLOR_PAIR(COL_BLUE));
-        mvprintw(8, 5, "vehiculos llegados:");
-        mvprintw(9, 5, "%d / %d", local_vehicles_arrived, n_vehicles);
+
+        // estadistica de vehiculos pasados
+        int row_vehiculos_pasados = 6;
+        mvprintw(row_vehiculos_pasados, 5, "vehiculos pasados:");
+        attron(COLOR_PAIR(COL_BLUE));
+        mvprintw(row_vehiculos_pasados+1, 5, "%d", local_pasados_n_s);
+        attron(COLOR_PAIR(COL_RED));
+        mvprintw(row_vehiculos_pasados+1, 13, "%d", local_pasados_e_o);
+        attron(COLOR_PAIR(COL_CYAN));
+        mvprintw(row_vehiculos_pasados+1, 21, "%d", local_pasados_e_n);
+        attroff(COLOR_PAIR(COL_CYAN));
+
+        // estadistica de generacion de vehiculos
+        int row_vehiculos_llegados = 9;
+        mvprintw(row_vehiculos_llegados, 5, "vehiculos llegados:");
+        mvprintw(row_vehiculos_llegados+1, 5, "%d / %d", local_vehicles_arrived, n_vehicles);
         if (*user_exit != 1 && local_vehicles_arrived < n_vehicles) {
-            mvprintw(10, 5, "[q] dejar de generar");
-            mvprintw(11, 9, "vehiculos");
+            mvprintw(row_vehiculos_llegados+2, 5, "[q] dejar de generar");
+            mvprintw(row_vehiculos_llegados+3, 9, "vehiculos");
         } else if (*user_exit) {
-            mvprintw(10, 5, "se cancelo generacion");
-            mvprintw(11, 5, "de vehiculos");
+            mvprintw(row_vehiculos_llegados+2, 5, "se cancelo generacion");
+            mvprintw(row_vehiculos_llegados+3, 5, "de vehiculos");
         } else {
-            mvprintw(10, 5, "se termino generacion");
-            mvprintw(11, 5, "de vehiculos");
+            mvprintw(row_vehiculos_llegados+2, 5, "se termino generacion");
+            mvprintw(row_vehiculos_llegados+3, 5, "de vehiculos");
         }
         int input = getch();
         if (*user_exit != 1 && input != ERR && input == (int) USER_EXIT) {
-            mvprintw(12, 6, "%c detectado", input);
+            mvprintw(row_vehiculos_llegados+4, 6, "%c detectado", input);
             *user_exit = 1;
         }
 
