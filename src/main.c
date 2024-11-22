@@ -37,8 +37,6 @@ pthread_mutex_t mutex_norte_sur = PTHREAD_MUTEX_INITIALIZER; // proteger acceso 
 // (evitar que los que giran a la derecha adelanten)
 pthread_mutex_t mutex_primero_o_e = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t mutex_n_s_block = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t mutex_n_s_contador = PTHREAD_MUTEX_INITIALIZER;
-int n_s_contador = 0;
 
 // definicion de punteros a archivos log
 FILE *log_file;
@@ -188,9 +186,6 @@ void *vehiculo_en_marcha(void *arg) {
         // en la via este-oeste cruza y los que van a la derecha no adelanten los que esperan a pasar derecho
         // la cuestion es que los vehiculos que pasan al oeste tienen que esperar por el paso de solamente uno
         // asi automaticamente no adelantan
-        pthread_mutex_lock(&mutex_n_s_contador);
-        int local_n_s_contador = n_s_contador;
-        pthread_mutex_unlock(&mutex_n_s_contador);
         if (coche->via == este_oeste) {
             // mantener orden que solamente el primero en via este-oeste pueda cruzar
             pthread_mutex_lock(&mutex_primero_o_e);
@@ -198,19 +193,6 @@ void *vehiculo_en_marcha(void *arg) {
             fprintf(log_file, "[%s] vehiculo %d es primero en via este-oeste (%s)\n", timestamp, coche->id,
                     coche->derecha ? "girando" : "derecha");
             free(timestamp);
-        } else if (local_n_s_contador > 1) {
-            // logica para evitar que la via n-s postule sem_wait muy seguido, mientras o-e esta
-            // esperando a recibir el primer-vehiculo-mutex
-            pthread_mutex_lock(&mutex_n_s_block);
-            sleep(1); // esperar para que n-s vehiculos no puedan entrar y preferir via o-e
-            pthread_mutex_unlock(&mutex_n_s_block);
-            pthread_mutex_lock(&mutex_n_s_contador);
-            n_s_contador = 0;
-            pthread_mutex_unlock(&mutex_n_s_contador);
-        } else {
-            pthread_mutex_lock(&mutex_n_s_contador);
-            n_s_contador++;
-            pthread_mutex_unlock(&mutex_n_s_contador);
         }
 
         if (coche->via == este_oeste && coche->derecha) {
@@ -225,7 +207,7 @@ void *vehiculo_en_marcha(void *arg) {
             }
             // vehiculo se fue de la cruce, proximo en via este oeste puede cruzar
             pthread_mutex_unlock(&mutex_primero_o_e);
-            char* timestamp = time_now_ns();
+            char *timestamp = time_now_ns();
             fprintf(log_file, "[%s] vehiculo %d se fue de la cruce (%s)\n", timestamp, coche->id,
                     coche->derecha ? "girando" : "derecha");
             free(timestamp);
@@ -243,6 +225,13 @@ void *vehiculo_en_marcha(void *arg) {
         if (coche->via == este_oeste) {
             sem_wait(&sem);
         } else {
+            // solamente el primero de la fila puede postular sem_wait, cuando recibe paso el proximo
+            // es el primero y tiene derecho a postular sem_wait()
+            // sin esta logica, los de la via este-oeste tienen que esperar a ser los primeros en la
+            // fila de este-oeste hasta que pueden solicitar el pase por la cruce, mientras que los
+            // en la via norte-sur solicitan el pase sin ser el primero sin restriccion
+            // asi los de la via este-oeste no se les deja entrar porque solicitan sem_wait
+            // mucho mas tarde que los del norte-sur
             pthread_mutex_lock(&mutex_n_s_block);
             sem_wait(&sem);
             pthread_mutex_unlock(&mutex_n_s_block);
@@ -268,7 +257,7 @@ void *vehiculo_en_marcha(void *arg) {
             // vehiculo se fue de la cruce, senyalar al pimer vehiculo en la fila este-oeste
             // que puede cruzar
             pthread_mutex_unlock(&mutex_primero_o_e);
-            char* timestamp = time_now_ns();
+            char *timestamp = time_now_ns();
             fprintf(log_file, "[%s] vehiculo %d se fue de la cruce (%s).\n", timestamp, coche->id,
                     coche->derecha ? "girando" : "derecha");
             free(timestamp);
@@ -281,7 +270,7 @@ void *vehiculo_en_marcha(void *arg) {
         free(timestamp);
         free(coche);
         *int_ptr = 0;
-        pthread_exit((void *)int_ptr);
+        pthread_exit((void *) int_ptr);
     }
 
     char *timestamp = time_now_ns();
