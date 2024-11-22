@@ -291,6 +291,8 @@ int main(int argc, char **argv) {
     int user_exit_state;
     if (!debug) {
         init_pantalla(NUM_VEHICULOS, &user_exit_state);
+    } else {
+        user_exit_state = 0;
     }
 
     // inicializar semaforo para cruzar
@@ -301,13 +303,13 @@ int main(int argc, char **argv) {
     // se usa atoi() aqui aunque no reporta errores de conversion, pero se sabe que el string es convertible porque eso
     // se controla antes con la funcion is_valid_integer()
     unsigned int seed = (unsigned int) atoi(argv[1]);
+    pthread_t display_thread;
+    int display_status = 1; // mientras que no este 0 el programa sigue ejecutandose
     if (debug) {
         printf("#### Inicializando Semaforo con seed=%u ####\n", seed);
+    } else {
+        pthread_create(&display_thread, NULL, mostrar_en_pantalla, &display_status);
     }
-
-    int display_status = 1; // mientras que no este 0 el programa sigue ejecutandose
-    pthread_t display_thread;
-    pthread_create(&display_thread, NULL, mostrar_en_pantalla, &display_status);
 
     // 1) crear numero aleatorio
     int status = 1;
@@ -417,18 +419,17 @@ int main(int argc, char **argv) {
     fclose(log_file);
 
     sem_destroy(&sem);
-
-    // esperar a hilo de pantalla para terminar
-
-    log_exit = fopen("logs/thread_exit.log", "a");
-    display_status = 0;
-    pthread_join(display_thread, NULL);
-    char *exit_time = time_now_ns();
-    fprintf(log_exit, "[%s] Display thread terminated\n", exit_time);
-    fclose(log_exit);
-    free(exit_time);
+    sleep(2);
 
     if (!debug) {
+        // esperar a hilo de pantalla para terminar
+        log_exit = fopen("logs/thread_exit.log", "a");
+        display_status = 0;
+        pthread_join(display_thread, NULL);
+        char *exit_time = time_now_ns();
+        fprintf(log_exit, "[%s] Display thread terminated\n", exit_time);
+        fclose(log_exit);
+        free(exit_time);
         reset_pantalla();
     }
 
