@@ -85,6 +85,7 @@ void *vehiculo_en_marcha(void *arg) {
     // esperar un poco para que se agreguen vehiculos a la lista de espera
     sleep(1);
     free(arg); // liberar memoria solamente aqui para que se liberara ya en el main while
+    int *int_ptr = malloc(sizeof(int));
     // sacar primero vehiculo de cola de espera de una de las dos vias
     // si ambas colas tienen vehiculos pendientes
     vehiculo *coche = NULL;
@@ -236,7 +237,8 @@ void *vehiculo_en_marcha(void *arg) {
             pthread_mutex_unlock(&display_state.display_mutex);
 
             free(coche);
-            pthread_exit(0);
+            *int_ptr = 0;
+            pthread_exit(int_ptr);
         }
         if (coche->via == este_oeste) {
             sem_wait(&sem);
@@ -278,7 +280,8 @@ void *vehiculo_en_marcha(void *arg) {
                 timestamp, coche->id, coche->via == este_oeste ? "este-oeste" : "norte-sur");
         free(timestamp);
         free(coche);
-        pthread_exit(0);
+        *int_ptr = 0;
+        pthread_exit((void *)int_ptr);
     }
 
     char *timestamp = time_now_ns();
@@ -289,7 +292,7 @@ void *vehiculo_en_marcha(void *arg) {
         printf("-------- coche es nulo ----- se agrego: id %d via %s\n", coche_para_cola->id,
                coche_para_cola->via == este_oeste ? "este-oeste" : "norte-sur");
     }
-    int *int_ptr = malloc(sizeof(int));
+
     *int_ptr = 1;
     pthread_exit((void *) int_ptr);
 }
