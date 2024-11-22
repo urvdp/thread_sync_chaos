@@ -28,10 +28,14 @@ bool turno_este_oeste = true; // flag para que las posibilidades en ambas colas 
 pthread_mutex_t mutex_turno = PTHREAD_MUTEX_INITIALIZER;
 cola espera_este_oeste = {NULL, NULL, 0, PTHREAD_MUTEX_INITIALIZER, PTHREAD_COND_INITIALIZER};
 cola espera_norte_sur = {NULL, NULL, 0, PTHREAD_MUTEX_INITIALIZER, PTHREAD_COND_INITIALIZER};
-int n_este_oeste = 0;
-int n_norte_sur = 0;
-pthread_mutex_t mutex_este_oeste = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t mutex_norte_sur = PTHREAD_MUTEX_INITIALIZER;
+int n_este_oeste = 0; // para representar numero de vehiculos en la cola de la via este oeste
+int n_norte_sur = 0; // para representar numero de vehiculos en la cola de la via norte sur
+pthread_mutex_t mutex_este_oeste = PTHREAD_MUTEX_INITIALIZER; // proteger acceso n_este_oeste
+pthread_mutex_t mutex_norte_sur = PTHREAD_MUTEX_INITIALIZER; // proteger acceso n_norte_sur
+
+// semaforo para que solamente el primero en la fila de la via oeste-este cruza
+// (evitar que los que giran a la derecha adelanten)
+sem_t paso_este_oeste;
 
 // definicion de punteros a archivos log
 FILE *log_file;
@@ -154,46 +158,67 @@ void *vehiculo_en_marcha(void *arg) {
     // concludiendo, siempre algun vehiculo esta elegido para pasar la interseccion
 
     if (coche != NULL) {
-        // la logica funciona, pero para mostrar realmente cuantos aun estan esperando en el semaforo
-        // para recibir el paso por el sem_wait necesito otra lista de espera que son los activos
-        // que ya se sacaron de la lista de espera de llegada y son los proximos en pasar
-        // en caso de que este disponible
         // el contador n_este_oeste / n_norte_sur es importante para saber cuantos aun
         // quieren pasar de los agregados a la cola a un hilo para pasar la interseccion, pero
         // los contadores no son sincronos con los vehiculos pasando por la interseccion
 
-        // lo que esta pasando es que se asignan los coches de la lista de espera a un hilo
-        // y justo en este momento es van de la lista de espera, pero realmente en este estado activo
+        // lo que esta pasando es que se asignan los vehiculos de la lista de espera a un hilo
+        // y justo en este momento se van de la lista de espera, pero realmente en este estado activo
         // que hayan sido elegido de un hilo para pasar la interseccion todavia esperan a su paso
         // por el semaforo, osea de las dos colas para ambos vias, los vehiculos son asignados a un hilo
         // y pasan a ser activo en la espera al paso
-        // de hecho las dos colas de ambas vias se juntan a una cola activa para el paso
+        // de hecho las dos colas de ambas vias se juntan a una cola activa (con postulando sem_wait) para el paso
         // que en este momento sin esa cola activa no esta representado resultando en ese comportamiento
-        // asincrono
+        // asincrono (cuando se llama sem_wait hasta que se yo, no necesariamente es una cola FIFO
+        // que el primero que llamo sem_wait es el proximo en recibir el paso cuando el semaforo esta
+        // disponible otra vez, eso depende de la implementacion del OS, pero de las pruebas que hice
+        // yo me parece que en esta implementacion el primero en llamar es el proximo en recibir el paso)
+
+        // mas encima, los vehiculos que van a la derecha no tienen que esperar su paso por la interseccion
+        // porque no se tienen que sincronizar con la via norte-sur como son independientes
+        // pero lo que si tienen que esperar es que tienen que ser los primeros en la fila de la via este-oeste
+        // para poder cruzar -> para esto otro semaforo es necesitado para que solamente el primero
+        // en la via este-oeste cruza y los que van a la derecha no adelanten los que esperan a pasar derecho
+        // la cuestion es que los vehiculos que pasan al oeste tienen que esperar por el paso de solamente uno
+        // asi automaticamente no adelantan
+        if (coche->via == este_oeste) {
+            // mantener orden que solamente el primero en via este-oeste pueda cruzar
+            sem_wait(&paso_este_oeste);
+            char *timestamp = time_now_ns();
+            fprintf(log_file, "[%s] vehiculo %d es primero en via este-oeste (%s)\n", timestamp, coche->id,
+                    coche->derecha ? "girando" : "derecha");
+            free(timestamp);
+        }
 
         if (coche->via == este_oeste && coche->derecha) {
             // en case de la via este-oeste que el vehicula gira a la derecha, no tiene que esperar al paso a la interseccion
-            sleep(2); // tiempo para girar a derecha
+            sleep(1); // tiempo para girar a derecha
+            char *timecheck = time_now_ns();
+            fprintf(log_file, "[%s] vehiculo %d del %s gira al norte.\n",
+                    timecheck, coche->id, coche->via == este_oeste ? "este-oeste" : "norte-sur");
+            free(timecheck);
             if (debug) {
                 printf("girando a derecha -> id %d\n", coche->id);
             }
+            // vehiculo se fue de la cruce, proximo en via este oeste puede cruzar
+            sem_post(&paso_este_oeste);
+            char* timestamp = time_now_ns();
+            fprintf(log_file, "[%s] vehiculo %d se fue de la cruce (%s)\n", timestamp, coche->id,
+                    coche->derecha ? "girando" : "derecha");
+            free(timestamp);
             pthread_mutex_lock(&display_state.display_mutex);
             display_state.crossing_vehicle_id = coche->id;
             strcpy(display_state.crossing_dir, "girando a la derecha");
             display_state.espera_este_oeste--;
             pthread_mutex_unlock(&display_state.display_mutex);
 
-            char *timecheck = time_now_ns();
-            fprintf(log_file, "[%s] Vehiculo %d del %s gira al norte.\n",
-                    timecheck, coche->id, coche->via == este_oeste ? "este-oeste" : "norte-sur");
-            free(timecheck);
             free(coche);
             pthread_exit(0);
         }
 
         sem_wait(&sem);
         char *timecheck = time_now_ns();
-        fprintf(log_file, "[%s] Vehiculo %d del %s esta pasando.\n",
+        fprintf(log_file, "[%s] vehiculo %d del %s esta pasando.\n",
                 timecheck, coche->id, coche->via == este_oeste ? "este-oeste" : "norte-sur");
         free(timecheck);
         pthread_mutex_lock(&display_state.display_mutex);
@@ -206,10 +231,19 @@ void *vehiculo_en_marcha(void *arg) {
         }
         pthread_mutex_unlock(&display_state.display_mutex);
         sleep(3); // tiempo para cruzar
+        if (coche->via == este_oeste) {
+            // vehiculo se fue de la cruce, senyalar al pimer vehiculo en la fila este-oeste
+            // que puede cruzar
+            sem_post(&paso_este_oeste);
+            char* timestamp = time_now_ns();
+            fprintf(log_file, "[%s] vehiculo %d se fue de la cruce (%s).\n", timestamp, coche->id,
+                    coche->derecha ? "girando" : "derecha");
+            free(timestamp);
+        }
         sem_post(&sem);
 
         char *timestamp = time_now_ns();
-        fprintf(log_file, "[%s] Vehiculo %d del %s se fue de la interseccion.\n",
+        fprintf(log_file, "[%s] vehiculo %d del %s se fue de la cruce.\n",
                 timestamp, coche->id, coche->via == este_oeste ? "este-oeste" : "norte-sur");
         free(timestamp);
         free(coche);
@@ -261,6 +295,8 @@ int main(int argc, char **argv) {
 
     // inicializar semaforo para cruzar
     sem_init(&sem, 0, 1);
+    // inicializar semaforo para el paso en via este oeste
+    sem_init(&paso_este_oeste, 0, 1);
 
     // se usa atoi() aqui aunque no reporta errores de conversion, pero se sabe que el string es convertible porque eso
     // se controla antes con la funcion is_valid_integer()

@@ -52,7 +52,7 @@ void *mostrar_en_pantalla(void *arg) {
     ts.tv_sec = 0;
     ts.tv_nsec = 500000000;
 
-    int offset = 28;
+    int offset = 30;
 
     display_file = fopen("logs/display.log", "w");
     fprintf(display_file, "Display Log\n");
@@ -110,8 +110,11 @@ void *mostrar_en_pantalla(void *arg) {
         if (*user_exit != 1 && local_vehicles_arrived < n_vehicles) {
             mvprintw(10, 5, "[q] dejar de generar");
             mvprintw(11, 9, "vehiculos");
-        } else {
+        } else if (*user_exit) {
             mvprintw(10, 5, "se cancelo generacion");
+            mvprintw(11, 5, "de vehiculos");
+        } else {
+            mvprintw(10, 5, "se termino generacion");
             mvprintw(11, 5, "de vehiculos");
         }
         int input = getch();
