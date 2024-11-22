@@ -38,7 +38,6 @@ pthread_mutex_t mutex_norte_sur = PTHREAD_MUTEX_INITIALIZER; // proteger acceso 
 pthread_mutex_t mutex_primero_o_e = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t mutex_n_s_block = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t mutex_n_s_contador = PTHREAD_MUTEX_INITIALIZER;
-cola activos_o_e = {NULL, NULL, 0, PTHREAD_MUTEX_INITIALIZER, PTHREAD_COND_INITIALIZER};
 int n_s_contador = 0;
 
 // definicion de punteros a archivos log
