@@ -476,6 +476,10 @@ int main(int argc, char **argv) {
     printf("                           ->  girando: %d\n", contador_este_norte);
     printf("     -------------------------------------\n");
     printf("     vehiculos            total: %d\n", contador_este_norte + contador_este_oeste + contador_norte_sur);
-    printf("     tiempo total de simulacion: %ld:%ld min\n", time_delta_min, time_delta_s);
+    if (time_delta_s < 10) {
+        printf("     tiempo total de simulacion: %ld:%d%ld min\n", time_delta_min, 0, time_delta_s);
+    } else {
+        printf("     tiempo total de simulacion: %ld:%ld min\n", time_delta_min, time_delta_s);
+    }
     return 0;
 }
