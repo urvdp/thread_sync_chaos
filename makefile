@@ -41,7 +41,7 @@ $(BUILD_DIR):
 # Clean target
 clean:
 	rm -f $(OBJS) $(TARGET)
-	rm logs/*.log
+	rm -f logs/*.log
 
 # Run target
 run: $(TARGET)
