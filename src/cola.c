@@ -86,3 +86,13 @@ void imprimir_cola(cola *ref_cola) {
     }
     pthread_mutex_unlock(&ref_cola->candado);
 }
+
+int controlar_fondo(cola* ref_cola) {
+    pthread_mutex_lock(&ref_cola->candado);
+    if (ref_cola->fondo == NULL) {
+        return  -1;
+    }
+    int id = ref_cola->fondo->coche->id;
+    pthread_mutex_unlock(&ref_cola->candado);
+    return id;
+}

@@ -35,7 +35,11 @@ pthread_mutex_t mutex_norte_sur = PTHREAD_MUTEX_INITIALIZER; // proteger acceso 
 
 // semaforo para que solamente el primero en la fila de la via oeste-este cruza
 // (evitar que los que giran a la derecha adelanten)
-sem_t paso_este_oeste;
+pthread_mutex_t mutex_primero_o_e = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t mutex_n_s_block = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t mutex_n_s_contador = PTHREAD_MUTEX_INITIALIZER;
+cola activos_o_e = {NULL, NULL, 0, PTHREAD_MUTEX_INITIALIZER, PTHREAD_COND_INITIALIZER};
+int n_s_contador = 0;
 
 // definicion de punteros a archivos log
 FILE *log_file;
@@ -95,6 +99,7 @@ void *vehiculo_en_marcha(void *arg) {
 
         coche = sacar(&espera_este_oeste);
         n_este_oeste--;
+
         if (debug) {
             printf("cola este-oeste: %d\n", n_este_oeste);
         }
@@ -133,6 +138,7 @@ void *vehiculo_en_marcha(void *arg) {
 
         coche = sacar(&espera_este_oeste);
         n_este_oeste--;
+
         if (debug) {
             printf("cola este-oeste: %d\n", n_este_oeste);
         }
@@ -181,13 +187,27 @@ void *vehiculo_en_marcha(void *arg) {
         // en la via este-oeste cruza y los que van a la derecha no adelanten los que esperan a pasar derecho
         // la cuestion es que los vehiculos que pasan al oeste tienen que esperar por el paso de solamente uno
         // asi automaticamente no adelantan
+        pthread_mutex_lock(&mutex_n_s_contador);
+        int local_n_s_contador = n_s_contador;
+        pthread_mutex_unlock(&mutex_n_s_contador);
         if (coche->via == este_oeste) {
             // mantener orden que solamente el primero en via este-oeste pueda cruzar
-            sem_wait(&paso_este_oeste);
+            pthread_mutex_lock(&mutex_primero_o_e);
             char *timestamp = time_now_ns();
             fprintf(log_file, "[%s] vehiculo %d es primero en via este-oeste (%s)\n", timestamp, coche->id,
                     coche->derecha ? "girando" : "derecha");
             free(timestamp);
+        } else if (local_n_s_contador > 1) {
+            pthread_mutex_lock(&mutex_n_s_block);
+            sleep(1); // esperar para que n-s vehiculos no puedan entrar y preferir via o-e
+            pthread_mutex_unlock(&mutex_n_s_block);
+            pthread_mutex_lock(&mutex_n_s_contador);
+            n_s_contador = 0;
+            pthread_mutex_unlock(&mutex_n_s_contador);
+        } else {
+            pthread_mutex_lock(&mutex_n_s_contador);
+            n_s_contador++;
+            pthread_mutex_unlock(&mutex_n_s_contador);
         }
 
         if (coche->via == este_oeste && coche->derecha) {
@@ -201,7 +221,7 @@ void *vehiculo_en_marcha(void *arg) {
                 printf("girando a derecha -> id %d\n", coche->id);
             }
             // vehiculo se fue de la cruce, proximo en via este oeste puede cruzar
-            sem_post(&paso_este_oeste);
+            pthread_mutex_unlock(&mutex_primero_o_e);
             char* timestamp = time_now_ns();
             fprintf(log_file, "[%s] vehiculo %d se fue de la cruce (%s)\n", timestamp, coche->id,
                     coche->derecha ? "girando" : "derecha");
@@ -215,8 +235,14 @@ void *vehiculo_en_marcha(void *arg) {
             free(coche);
             pthread_exit(0);
         }
+        if (coche->via == este_oeste) {
+            sem_wait(&sem);
+        } else {
+            pthread_mutex_lock(&mutex_n_s_block);
+            sem_wait(&sem);
+            pthread_mutex_unlock(&mutex_n_s_block);
+        }
 
-        sem_wait(&sem);
         char *timecheck = time_now_ns();
         fprintf(log_file, "[%s] vehiculo %d del %s esta pasando.\n",
                 timecheck, coche->id, coche->via == este_oeste ? "este-oeste" : "norte-sur");
@@ -234,7 +260,7 @@ void *vehiculo_en_marcha(void *arg) {
         if (coche->via == este_oeste) {
             // vehiculo se fue de la cruce, senyalar al pimer vehiculo en la fila este-oeste
             // que puede cruzar
-            sem_post(&paso_este_oeste);
+            pthread_mutex_unlock(&mutex_primero_o_e);
             char* timestamp = time_now_ns();
             fprintf(log_file, "[%s] vehiculo %d se fue de la cruce (%s).\n", timestamp, coche->id,
                     coche->derecha ? "girando" : "derecha");
@@ -297,8 +323,6 @@ int main(int argc, char **argv) {
 
     // inicializar semaforo para cruzar
     sem_init(&sem, 0, 1);
-    // inicializar semaforo para el paso en via este oeste
-    sem_init(&paso_este_oeste, 0, 1);
 
     // se usa atoi() aqui aunque no reporta errores de conversion, pero se sabe que el string es convertible porque eso
     // se controla antes con la funcion is_valid_integer()

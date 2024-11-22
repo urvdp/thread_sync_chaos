@@ -27,4 +27,6 @@ vehiculo* sacar(cola *ref_cola);
 
 void imprimir_cola(cola* ref_cola);
 
+int controlar_fondo(cola* ref_cola);
+
 #endif //COLA_H
