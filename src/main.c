@@ -43,6 +43,96 @@ FILE *log_file;
 FILE *rand_file;
 FILE *log_exit;
 
+void conducir_desde_norte(vehiculo *coche) {
+    // funcion si el vehiculo de la fila este-oeste fue eligido para cruzar
+
+    // solamente el primero de la fila puede postular sem_wait, cuando recibe paso el proximo
+    // es el primero y tiene derecho a postular sem_wait()
+    // sin esta logica, los de la via este-oeste tienen que esperar a ser los primeros en la
+    // fila de este-oeste hasta que pueden solicitar el pase por la cruce, mientras que los
+    // en la via norte-sur solicitan el pase sin ser el primero sin restriccion
+    // asi los de la via este-oeste no se les deja entrar porque solicitan sem_wait
+    // mucho mas tarde que los del norte-sur
+    pthread_mutex_lock(&mutex_n_s_block);
+    sem_wait(&sem);
+    pthread_mutex_unlock(&mutex_n_s_block);
+
+    char *timecheck = time_now_ns();
+    fprintf(log_file, "[%s] vehiculo %d del %s esta pasando.\n",
+            timecheck, coche->id, coche->via == este_oeste ? "este-oeste" : "norte-sur");
+    free(timecheck);
+    pthread_mutex_lock(&display_state.display_mutex);
+    display_state.crossing_vehicle_id = coche->id;
+    strcpy(display_state.crossing_dir, coche->via == este_oeste ? "este-oeste" : "norte-sur");
+    display_state.espera_norte_sur--;
+    display_state.pasados_n_s++;
+
+    pthread_mutex_unlock(&display_state.display_mutex);
+    sleep(3); // tiempo para cruzar
+
+    sem_post(&sem);
+}
+
+void conducir_desde_este(vehiculo *coche) {
+    // funcion si el vehiculo de la fila norte-sur fue eligido para cruzar
+
+    // mantener orden que solamente el primero en via este-oeste pueda cruzar
+    pthread_mutex_lock(&mutex_primero_o_e);
+    char *timestamp = time_now_ns();
+    fprintf(log_file, "[%s] vehiculo %d es primero en via este-oeste (%s)\n", timestamp, coche->id,
+            coche->derecha ? "girando" : "derecha");
+    free(timestamp);
+
+    if (coche->derecha) {
+        // en case de la via este-oeste que el vehicula gira a la derecha, no tiene que esperar al paso a la interseccion
+        sleep(1); // tiempo para girar a derecha
+        char *timecheck = time_now_ns();
+        fprintf(log_file, "[%s] vehiculo %d del %s gira al norte.\n",
+                timecheck, coche->id, coche->via == este_oeste ? "este-oeste" : "norte-sur");
+        free(timecheck);
+        if (debug) {
+            printf("girando a derecha -> id %d\n", coche->id);
+        }
+        // vehiculo se fue de la cruce, proximo en via este oeste puede cruzar
+        pthread_mutex_unlock(&mutex_primero_o_e);
+        char *timestamp2 = time_now_ns();
+        fprintf(log_file, "[%s] vehiculo %d se fue de la cruce (%s)\n", timestamp2, coche->id,
+                coche->derecha ? "girando" : "derecho");
+        free(timestamp2);
+
+        pthread_mutex_lock(&display_state.display_mutex);
+        display_state.crossing_vehicle_id = coche->id;
+        strcpy(display_state.crossing_dir, "girando a la derecha");
+        display_state.espera_este_oeste--;
+        display_state.pasados_e_n++;
+        pthread_mutex_unlock(&display_state.display_mutex);
+    } else {
+        sem_wait(&sem);
+        char *timecheck = time_now_ns();
+        fprintf(log_file, "[%s] vehiculo %d del %s esta pasando.\n",
+                timecheck, coche->id, coche->via == este_oeste ? "este-oeste" : "norte-sur");
+        free(timecheck);
+
+        pthread_mutex_lock(&display_state.display_mutex);
+        display_state.crossing_vehicle_id = coche->id;
+        strcpy(display_state.crossing_dir, coche->via == este_oeste ? "este-oeste" : "norte-sur");
+        display_state.espera_este_oeste--;
+        display_state.pasados_e_o++;
+        pthread_mutex_unlock(&display_state.display_mutex);
+
+        sleep(3); // tiempo para cruzar
+        // vehiculo se fue de la cruce, senyalar al pimer vehiculo en la fila este-oeste
+        // que puede cruzar
+        pthread_mutex_unlock(&mutex_primero_o_e);
+        char *timestamp = time_now_ns();
+        fprintf(log_file, "[%s] vehiculo %d se fue de la cruce (%s).\n", timestamp, coche->id,
+                coche->derecha ? "girando" : "derecha");
+        free(timestamp);
+        sem_post(&sem);
+    }
+}
+
+
 // funcion principal de hilos
 void *vehiculo_en_marcha(void *arg) {
     // usando la estructura vehiculo, se pasan los parametros para saber en que via y a cual direccion va
@@ -186,83 +276,12 @@ void *vehiculo_en_marcha(void *arg) {
         // en la via este-oeste cruza y los que van a la derecha no adelanten los que esperan a pasar derecho
         // la cuestion es que los vehiculos que pasan al oeste tienen que esperar por el paso de solamente uno
         // asi automaticamente no adelantan
-        if (coche->via == este_oeste) {
-            // mantener orden que solamente el primero en via este-oeste pueda cruzar
-            pthread_mutex_lock(&mutex_primero_o_e);
-            char *timestamp = time_now_ns();
-            fprintf(log_file, "[%s] vehiculo %d es primero en via este-oeste (%s)\n", timestamp, coche->id,
-                    coche->derecha ? "girando" : "derecha");
-            free(timestamp);
-        }
 
-        if (coche->via == este_oeste && coche->derecha) {
-            // en case de la via este-oeste que el vehicula gira a la derecha, no tiene que esperar al paso a la interseccion
-            sleep(1); // tiempo para girar a derecha
-            char *timecheck = time_now_ns();
-            fprintf(log_file, "[%s] vehiculo %d del %s gira al norte.\n",
-                    timecheck, coche->id, coche->via == este_oeste ? "este-oeste" : "norte-sur");
-            free(timecheck);
-            if (debug) {
-                printf("girando a derecha -> id %d\n", coche->id);
-            }
-            // vehiculo se fue de la cruce, proximo en via este oeste puede cruzar
-            pthread_mutex_unlock(&mutex_primero_o_e);
-            char *timestamp = time_now_ns();
-            fprintf(log_file, "[%s] vehiculo %d se fue de la cruce (%s)\n", timestamp, coche->id,
-                    coche->derecha ? "girando" : "derecha");
-            free(timestamp);
-            pthread_mutex_lock(&display_state.display_mutex);
-            display_state.crossing_vehicle_id = coche->id;
-            strcpy(display_state.crossing_dir, "girando a la derecha");
-            display_state.espera_este_oeste--;
-            display_state.pasados_e_n++;
-            pthread_mutex_unlock(&display_state.display_mutex);
-
-            free(coche);
-            *int_ptr = 0;
-            pthread_exit(int_ptr);
-        }
         if (coche->via == este_oeste) {
-            sem_wait(&sem);
+            conducir_desde_este(coche);
         } else {
-            // solamente el primero de la fila puede postular sem_wait, cuando recibe paso el proximo
-            // es el primero y tiene derecho a postular sem_wait()
-            // sin esta logica, los de la via este-oeste tienen que esperar a ser los primeros en la
-            // fila de este-oeste hasta que pueden solicitar el pase por la cruce, mientras que los
-            // en la via norte-sur solicitan el pase sin ser el primero sin restriccion
-            // asi los de la via este-oeste no se les deja entrar porque solicitan sem_wait
-            // mucho mas tarde que los del norte-sur
-            pthread_mutex_lock(&mutex_n_s_block);
-            sem_wait(&sem);
-            pthread_mutex_unlock(&mutex_n_s_block);
+            conducir_desde_norte(coche);
         }
-
-        char *timecheck = time_now_ns();
-        fprintf(log_file, "[%s] vehiculo %d del %s esta pasando.\n",
-                timecheck, coche->id, coche->via == este_oeste ? "este-oeste" : "norte-sur");
-        free(timecheck);
-        pthread_mutex_lock(&display_state.display_mutex);
-        display_state.crossing_vehicle_id = coche->id;
-        strcpy(display_state.crossing_dir, coche->via == este_oeste ? "este-oeste" : "norte-sur");
-        if (coche->via == este_oeste) {
-            display_state.espera_este_oeste--;
-            display_state.pasados_e_o++;
-        } else {
-            display_state.espera_norte_sur--;
-            display_state.pasados_n_s++;
-        }
-        pthread_mutex_unlock(&display_state.display_mutex);
-        sleep(3); // tiempo para cruzar
-        if (coche->via == este_oeste) {
-            // vehiculo se fue de la cruce, senyalar al pimer vehiculo en la fila este-oeste
-            // que puede cruzar
-            pthread_mutex_unlock(&mutex_primero_o_e);
-            char *timestamp = time_now_ns();
-            fprintf(log_file, "[%s] vehiculo %d se fue de la cruce (%s).\n", timestamp, coche->id,
-                    coche->derecha ? "girando" : "derecha");
-            free(timestamp);
-        }
-        sem_post(&sem);
 
         char *timestamp = time_now_ns();
         fprintf(log_file, "[%s] vehiculo %d del %s se fue de la cruce.\n",
