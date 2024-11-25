@@ -31,12 +31,7 @@ void init_pantalla(int n_vehiculos, int* user_exit_state) {
         reset_pantalla();
         fprintf(stderr, "Error: Your terminal does not support colors.\n");
         exit(EXIT_FAILURE); // Terminate the program safely
-    }// mantener orden que solamente el primero en via este-oeste pueda cruzar
-    pthread_mutex_lock(&mutex_primero_o_e);
-    char *timestamp = time_now_ns();
-    fprintf(log_file, "[%s] vehiculo %d es primero en via este-oeste (%s)\n", timestamp, coche->id,
-            coche->derecha ? "girando" : "derecha");
-    free(timestamp);
+    }
 
     start_color(); // include color support, aragorn supports colors (I tried it)
     nodelay(stdscr, TRUE); // enable non blocking user input (e.g. used here to quit)
